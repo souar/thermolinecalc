@@ -1,40 +1,62 @@
 
-## Make panel dimensions editable in Pricing
+## Cap apex at max panel size — final fix
 
-### Current state
-- `lining_pricing` table already has `panel_width` and `panel_height` columns (numeric, not null)
-- `src/routes/pricing.tsx` displays them as read-only text: `{Number(p.panel_width)}×{Number(p.panel_height)}`
-- `src/lib/calculator.ts` has hard-coded `LINING_TYPES` array with `panelW`/`panelH` — this is used as the source of truth in the calculator
-- `jobs.$jobId.tsx` matches pricing rows by looking up `LINING_TYPES` panel dims — creates a coupling that breaks if pricing dims diverge
+### Diagnosis
+With MAL30 (5×3m), eave 15m, no overlaps:
+- `wallWithOverlap = 15 + 0 = 15m`, `panelH = 3m` → `overlapExcess = 12m`
+- Apex grows by `2 × 12 = 24m` → 24.8m apex
 
-### Changes
+The "absorb overlap into apex" branch is wrong when the wall itself is taller than one panel — that's not overlap, that's just a tall wall that needs **stacked panels**, not apex absorption.
 
-**1. `src/routes/pricing.tsx`** — make width/height editable
-- Replace the static `Panel (m)` cell with two `Input type="number"` fields (width, height)
-- Extend `edits` state to include `width` and `height`
-- Update the save mutation to write `panel_width` and `panel_height` alongside cost/weight
+### Correct rule
+Overlap absorption should only consider the **excess from the overhang/seal**, not the entire wall height. Walls > panelH are handled by stacking (already works correctly via `fullStacks`).
 
-**2. `src/lib/calculator.ts`** — accept panel dims via input
-- Add optional `panelW?: number` and `panelH?: number` to `CalcInput`
-- When provided, override the values from `LINING_TYPES` (which becomes a fallback / default seed only)
-- Keep `LINING_TYPES` as the list of available lining type IDs + default dims/weight
+Then **clamp apex at `max(panelW, panelH)`**. If geometric apex still exceeds that cap, drop one roof panel row per side (apex absorbs the freed slope length instead).
 
-**3. `src/components/CalculatorPanel.tsx`** — pass through dims from pricing
-- Already receives `pricing` prop; extend it to include `panel_width` / `panel_height`
-- Pass these into the `calculate()` call
+### Changes in `src/lib/calculator.ts`
 
-**4. `src/routes/jobs.$jobId.tsx` & `src/routes/calculator.tsx`** — use pricing dims
-- When looking up `linePrice`, match by `lining_type` only (not by hard-coded panel dims), OR use the dims from the pricing row
-- Pass `panel_width` / `panel_height` through to `CalculatorPanel` / `calculate()`
+**1. Fix overlap excess calculation:**
+```ts
+// OLD: const wallWithOverlap = eaveHeight + roofOverlap;
+//      const overlapExcess = Math.max(0, wallWithOverlap - panelH);
 
-### Notes
-- No DB migration needed — columns already exist
-- Validation: width and height must be > 0; show inline error if not
-- Saving new dims will change calc results immediately (live re-render via query invalidation)
+// NEW: only the overhang itself can push apex; wall stacking handles tall walls
+const overlapExcess = roofOverlap; // 0 or 0.25m
+```
+(The intent of the original was to handle roof-overlap eating into wall panels — but with overlap of 0.25m and panels ≥ 3m, this is always just the overhang itself.)
 
-### Files touched
-- `src/routes/pricing.tsx`
-- `src/lib/calculator.ts`
-- `src/components/CalculatorPanel.tsx`
-- `src/routes/jobs.$jobId.tsx`
-- `src/routes/calculator.tsx` (if it also passes pricing — verify during implementation)
+**2. Clamp apex at panel max with roof-row fallback:**
+```ts
+const apexMax = Math.max(panelW, panelH);
+let apexAuto = geometricApex + 2 * overlapExcess;
+let roofPanelsPerSide = wholeAlongSlope;
+
+while (apexAuto > apexMax && roofPanelsPerSide > 0) {
+  roofPanelsPerSide -= 1;
+  const newGeo = Math.max(0, (effectiveSlope - roofPanelsPerSide * panelH) * 2);
+  apexAuto = newGeo + 2 * overlapExcess;
+}
+
+if (apexAuto > apexMax) {
+  warnings.push(`Apex ${apexAuto.toFixed(2)}m exceeds max panel ${apexMax}m — geometry may need review.`);
+}
+```
+
+**3. Clamp manual override too:**
+```ts
+if (apexOverride && apexOverride > apexMax) {
+  warnings.push(`Apex override ${apexOverride}m exceeds max panel size ${apexMax}m.`);
+}
+```
+
+**4. Use `roofPanelsPerSide` (not `wholeAlongSlope`) for `roofPanels`.**
+
+### Verification matrix
+| Config | Expected |
+|---|---|
+| 50×35, eave 15, MAL30, no overlaps | apex ≤ 5m, walls 5 stacks, roof recalculated |
+| 50×30, eave 5.4, MAL18, both overlaps | apex ~1.55m + 0.5m = 2.05m (under 5m cap) |
+| 50×30, eave 3, MAL18 defaults | apex unchanged from current correct behaviour |
+
+### Files
+- `src/lib/calculator.ts` only
