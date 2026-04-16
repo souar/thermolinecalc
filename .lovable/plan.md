@@ -1,17 +1,31 @@
 
-## Move diagrams below all output sections
+## Stack diagrams side-by-side, full width below sidebar
 
-Reorder the results column in `src/components/CalculatorPanel.tsx`:
+### Changes in `src/components/CalculatorPanel.tsx`
 
-**New order:**
-1. Warnings alert
-2. Top stats (panel count primary)
-3. Section cards grid (Walls/Infill, Roof/Apex, Gable walls/triangles)
-4. Geometry card
-5. **Bay diagram** (moved down)
-6. **Gable diagram** (moved down)
+**1. Restructure root layout**
+Current: `grid lg:grid-cols-[420px_1fr]` wraps the inputs sidebar AND the entire results column (including diagrams). This forces diagrams into the narrow right column.
 
-Single-file edit — move the `<BayDiagram />` and `<GableDiagram />` JSX from their current position (between top stats and section cards) to after the Geometry card.
+New: split into two stacked sections:
+- **Top row**: `grid lg:grid-cols-[420px_1fr]` containing the inputs Card (left) and the results stack — warnings, top stats, section cards grid, geometry card (right).
+- **Bottom row**: full-width container holding both diagrams in `grid lg:grid-cols-2 gap-4` so `BayDiagram` and `GableDiagram` sit side-by-side and span the full panel width below the sidebar.
+
+The inputs Card naturally shrinks to its content height; the results column ends at the geometry card; diagrams flow underneath both, full width.
+
+**2. No changes to** `BayDiagram.tsx` or `GableDiagram.tsx` — they already use responsive SVG and internal grid layouts that will adapt to the wider/narrower container.
+
+### Result
+```text
+┌──────────────┬──────────────────────┐
+│ Inputs       │ Warnings             │
+│ (sidebar,    │ Stats                │
+│ auto-height) │ Section cards        │
+│              │ Geometry             │
+└──────────────┴──────────────────────┘
+┌─────────────────┬───────────────────┐
+│ Bay diagram     │ Gable diagram     │  ← full width
+└─────────────────┴───────────────────┘
+```
 
 ### Files
 - `src/components/CalculatorPanel.tsx`
