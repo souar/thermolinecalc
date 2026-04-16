@@ -1,5 +1,6 @@
 // Marquee lining geometry & quantity calculator.
 // All units in metres unless noted.
+// Billing model: m² = panel count × actual panel size (no trim discount).
 
 export const LINING_TYPES = [
   { id: "MAL18 / Thermoline", panelW: 5, panelH: 5, weightPerM2: 0.18 },
@@ -10,45 +11,62 @@ export const LINING_TYPES = [
 export type LiningTypeId = (typeof LINING_TYPES)[number]["id"];
 
 export interface CalcInput {
-  length: number; // marquee length (along bays)
-  width: number; // span across (eave to eave at floor)
-  eaveHeight: number; // leg height
-  pitchDeg: number; // roof pitch in degrees
-  baySize: number; // 3 or 5
+  length: number;
+  width: number;
+  eaveHeight: number;
+  pitchDeg: number;
+  baySize: number;
   liningType: LiningTypeId;
-  roofOverhangEnabled: boolean; // 0.25m drop past eave to seal to wall
-  wallFloorSealEnabled: boolean; // 0.25m skirt at base
-  apexOverride?: number | null; // metres, optional manual apex width
+  roofOverhangEnabled: boolean;
+  wallFloorSealEnabled: boolean;
+  apexOverride?: number | null;
   costPerM2?: number;
   weightPerM2?: number;
 }
 
+export interface CustomInfill {
+  height: number;
+  panelsCount: number;
+  m2: number;
+}
+
 export interface CalcResult {
   // geometry
-  slopeLength: number; // length of one roof side from eave to apex
-  ridgeHeight: number; // additional height above eave
-  // areas (m²)
-  wallsM2: number;
-  roofM2: number;
-  gablesM2: number;
-  totalM2: number;
-  // panels
+  slopeLength: number;
+  ridgeHeight: number;
   bays: number;
-  apexWidth: number; // computed apex piece width
-  apexAuto: number; // auto-calculated apex (before override)
+
+  // walls (long sides)
+  wallsM2: number;
   wallsPanels: number;
-  roofPanels: number; // includes apex pieces
-  gablePanels: number;
-  // costs
+  wallStacks: number;
+  customWallInfill: CustomInfill | null;
+
+  // roof (full panels only)
+  roofM2: number;
+  roofPanels: number;
+
+  // apex (custom strip)
+  apexWidth: number;
+  apexAuto: number; // geometric leftover (before override / overlap absorption)
+  apexM2: number;
+  apexPieces: number; // one per bay
+
+  // gable walls (rectangular fill below eave on each end)
+  gableWallsM2: number;
+  gableWallsPanels: number;
+
+  // gable triangles (custom)
+  gableTriM2: number;
+  gableTriCount: number;
+
+  // totals
+  totalM2: number;
+  totalPanels: number;
   totalWeightKg: number;
   totalCost: number;
-  // breakdown
-  perBay: {
-    wallM2: number;
-    roofM2: number;
-    apexM2: number;
-    gableTriM2: number;
-  };
+
+  warnings: string[];
 }
 
 const OVERHANG = 0.25;
@@ -69,73 +87,120 @@ export function calculate(input: CalcInput): CalcResult {
   } = input;
 
   const liningDef = LINING_TYPES.find((l) => l.id === input.liningType) ?? LINING_TYPES[0];
-  const panelW = liningDef.panelW; // bay-direction panel width
-  const panelH = liningDef.panelH; // along-slope panel height
+  const panelW = liningDef.panelW;
+  const panelH = liningDef.panelH;
+  const panelArea = panelW * panelH;
 
+  const warnings: string[] = [];
+
+  // ---- Geometry ----
   const pitchRad = (pitchDeg * Math.PI) / 180;
   const halfWidth = width / 2;
   const slopeLength = halfWidth / Math.cos(pitchRad);
   const ridgeHeight = halfWidth * Math.tan(pitchRad);
-
-  // Bays
   const bays = Math.max(1, Math.round(length / baySize));
 
-  // ---- Walls (long side eave walls, both sides) ----
-  const wallHeight = eaveHeight + (wallFloorSealEnabled ? FLOOR_SEAL : 0);
-  const wallsM2 = 2 * length * wallHeight;
-  // panels: one per bay per side, height in panelH units
-  const wallsPanels = bays * 2 * Math.ceil(wallHeight / panelH);
+  // ---- Roof + Apex ----
+  // Roof drop past eave is absorbed into apex (keeps wall panels full size).
+  const roofOverlap = roofOverhangEnabled ? OVERHANG : 0;
+  const effectiveSlope = slopeLength + roofOverlap;
 
-  // ---- Roof ----
-  // each side slope length, with optional 0.25m drop past eave
-  const effectiveSlope = slopeLength + (roofOverhangEnabled ? OVERHANG : 0);
-  const roofM2 = 2 * length * effectiveSlope;
-
-  // Apex piece (auto): leftover after whole panels along the slope
+  // Geometric apex = leftover slope after stacking whole roof panels, doubled across ridge
   const wholeAlongSlope = Math.floor(effectiveSlope / panelH);
-  const apexAuto = Math.max(0, (effectiveSlope - wholeAlongSlope * panelH) * 2); // ridge piece spans both sides
+  const geometricApex = Math.max(0, (effectiveSlope - wholeAlongSlope * panelH) * 2);
+
+  // If wall + roof overlap exceeds a single panel height, grow apex by the excess
+  // (×2 because pulling the roof up on both sides adds to the ridge strip)
+  const wallWithOverlap = eaveHeight + roofOverlap;
+  const overlapExcess = Math.max(0, wallWithOverlap - panelH);
+  const apexAuto = geometricApex + 2 * overlapExcess;
   const apexWidth = apexOverride != null && apexOverride > 0 ? apexOverride : apexAuto;
+  if (overlapExcess > 0) {
+    warnings.push(
+      `Wall + roof overlap (${(wallWithOverlap).toFixed(2)}m) exceeds panel height ${panelH}m — apex grown by ${(2 * overlapExcess).toFixed(2)}m to absorb it.`,
+    );
+  }
 
-  // panels per bay per side: along-slope full panels + 1 apex (shared at ridge counted once per bay)
-  const roofPanelsPerSidePerBay = wholeAlongSlope; // 5x5 (or 3x5) along-slope sections
-  const roofPanels = bays * (roofPanelsPerSidePerBay * 2) + bays; // + 1 apex per bay
+  const roofPanels = wholeAlongSlope * 2 * bays;
+  const roofM2 = roofPanels * panelArea;
 
-  // ---- Gables (two end triangles + rectangular fill below eave on gable face) ----
-  const gableTriArea = halfWidth * ridgeHeight; // 2 × (½ × width × h) for both gables = width × h
-  // The wall area at the gable face below eave is already excluded from "walls" (walls were only the long sides).
-  // Add the gable rectangular area below eave too:
-  const gableRectArea = 2 * width * (eaveHeight + (wallFloorSealEnabled ? FLOOR_SEAL : 0));
-  const gablesM2 = gableTriArea + gableRectArea;
-  // panels: rough estimate — full panels to fill gable rectangles + triangular pieces
-  const gableRectPanels = 2 * Math.ceil(width / panelW) * Math.ceil((eaveHeight + (wallFloorSealEnabled ? FLOOR_SEAL : 0)) / panelH);
-  const gableTriPanels = 2 * Math.ceil(width / panelW); // mirrored triangle pieces per gable
-  const gablePanels = gableRectPanels + gableTriPanels;
+  const apexPieces = bays;
+  const apexM2 = apexWidth * baySize * bays;
 
-  const totalM2 = wallsM2 + roofM2 + gablesM2;
+  // ---- Walls (long sides) ----
+  // Wall height after apex absorption: apex pulled the roof up by `overlapExcess` on each side,
+  // so the eave effectively drops by overlapExcess (wall doesn't have to reach as high).
+  // For panel stacking we use the actual wall height + floor seal, ignoring overlap (handled by apex).
+  const wallHeight = eaveHeight + (wallFloorSealEnabled ? FLOOR_SEAL : 0);
+  const fullStacks = Math.floor(wallHeight / panelH);
+  const leftover = wallHeight - fullStacks * panelH;
+
+  const wallStacks = fullStacks;
+  const wallsPanels = bays * 2 * fullStacks;
+  const wallsM2 = wallsPanels * panelArea;
+
+  let customWallInfill: CustomInfill | null = null;
+  if (leftover > 1e-6) {
+    const infillCount = bays * 2;
+    customWallInfill = {
+      height: leftover,
+      panelsCount: infillCount,
+      m2: infillCount * panelW * leftover,
+    };
+    warnings.push(
+      `Wall height ${wallHeight.toFixed(2)}m exceeds ${fullStacks} × ${panelH}m — added ${infillCount} custom infill panels at ${leftover.toFixed(2)}m tall.`,
+    );
+  }
+
+  // ---- Gable walls (rectangle below eave on each end) ----
+  const gableWallsPanelsPerEnd = Math.ceil(width / panelW) * Math.max(1, fullStacks);
+  const gableWallsPanels = gableWallsPanelsPerEnd * 2;
+  const gableWallsM2 = gableWallsPanels * panelArea;
+
+  // ---- Gable triangles (custom, max width = baySize, count forced even) ----
+  let slicesPerEnd = Math.ceil(width / baySize);
+  if (slicesPerEnd % 2 === 1) slicesPerEnd += 1; // split centre triangle in half
+  const gableTriCount = slicesPerEnd * 2;
+  // Actual triangular area: 2 × (½ × width × ridgeHeight)
+  const gableTriM2 = width * ridgeHeight;
+
+  // ---- Totals ----
+  const customM2 = customWallInfill?.m2 ?? 0;
+  const totalM2 = wallsM2 + customM2 + roofM2 + apexM2 + gableWallsM2 + gableTriM2;
+  const totalPanels =
+    wallsPanels +
+    (customWallInfill?.panelsCount ?? 0) +
+    roofPanels +
+    apexPieces +
+    gableWallsPanels +
+    gableTriCount;
+
   const totalWeightKg = totalM2 * (weightPerM2 || liningDef.weightPerM2);
   const totalCost = totalM2 * costPerM2;
 
   return {
     slopeLength,
     ridgeHeight,
-    wallsM2,
-    roofM2,
-    gablesM2,
-    totalM2,
     bays,
+    wallsM2,
+    wallsPanels,
+    wallStacks,
+    customWallInfill,
+    roofM2,
+    roofPanels,
     apexWidth,
     apexAuto,
-    wallsPanels,
-    roofPanels,
-    gablePanels,
+    apexM2,
+    apexPieces,
+    gableWallsM2,
+    gableWallsPanels,
+    gableTriM2,
+    gableTriCount,
+    totalM2,
+    totalPanels,
     totalWeightKg,
     totalCost,
-    perBay: {
-      wallM2: (wallsM2 / bays),
-      roofM2: roofM2 / bays,
-      apexM2: apexWidth * baySize,
-      gableTriM2: bays > 0 ? gableTriArea / 2 : 0,
-    },
+    warnings,
   };
 }
 

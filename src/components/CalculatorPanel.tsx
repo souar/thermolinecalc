@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 interface Props {
   value: CalcInput;
@@ -108,52 +109,82 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
 
       {/* Results */}
       <div className="space-y-4">
+        {result.warnings.length > 0 && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Specification notes</AlertTitle>
+            <AlertDescription>
+              <ul className="mt-1 list-disc space-y-1 pl-4 text-xs">
+                {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Total area" value={fmt(result.totalM2)} unit="m²" highlight />
-          <Stat label="Total panels" value={String(result.wallsPanels + result.roofPanels + result.gablePanels)} unit="pcs" />
+          <Stat label="Total panels" value={String(result.totalPanels)} unit="pcs" />
           <Stat label="Weight" value={fmt(result.totalWeightKg, 1)} unit="kg" />
           <Stat label="Cost" value={fmt(result.totalCost)} unit={pricing ? "" : "(set price)"} />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <AreaCard title="Walls" m2={result.wallsM2} panels={result.wallsPanels} />
-          <AreaCard title="Roof" m2={result.roofM2} panels={result.roofPanels} sub={`apex ${fmt(result.apexWidth)}m × ${result.bays} bays`} />
-          <AreaCard title="Gables" m2={result.gablesM2} panels={result.gablePanels} />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <AreaCard
+            title="Walls"
+            m2={result.wallsM2}
+            panels={result.wallsPanels}
+            sub={`${result.wallStacks} stack${result.wallStacks === 1 ? "" : "s"} × ${result.bays} bays × 2 sides`}
+          />
+          {result.customWallInfill && (
+            <AreaCard
+              title="Custom wall infill"
+              m2={result.customWallInfill.m2}
+              panels={result.customWallInfill.panelsCount}
+              sub={`${fmt(result.customWallInfill.height)}m tall (custom cut)`}
+              accent
+            />
+          )}
+          <AreaCard
+            title="Roof"
+            m2={result.roofM2}
+            panels={result.roofPanels}
+            sub={`full panels only`}
+          />
+          <AreaCard
+            title="Apex"
+            m2={result.apexM2}
+            panels={result.apexPieces}
+            sub={`${fmt(result.apexWidth)}m × ${fmt(value.baySize, 0)}m × ${result.bays} bays`}
+            accent
+          />
+          <AreaCard
+            title="Gable walls"
+            m2={result.gableWallsM2}
+            panels={result.gableWallsPanels}
+            sub={`rectangular fill, both ends`}
+          />
+          <AreaCard
+            title="Gable triangles"
+            m2={result.gableTriM2}
+            panels={result.gableTriCount}
+            sub={`custom triangles, max ${value.baySize}m wide`}
+            accent
+          />
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-              Geometry & per-bay breakdown
+              Geometry
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <KV k="Slope length" v={`${fmt(result.slopeLength)} m`} />
               <KV k="Ridge height" v={`${fmt(result.ridgeHeight)} m`} />
               <KV k="Bays" v={String(result.bays)} />
               <KV k="Apex (auto)" v={`${fmt(result.apexAuto)} m`} />
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Per bay</TableHead>
-                  <TableHead className="text-right">Wall m²</TableHead>
-                  <TableHead className="text-right">Roof m²</TableHead>
-                  <TableHead className="text-right">Apex m²</TableHead>
-                  <TableHead className="text-right">Gable tri m²</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="text-muted-foreground">Each</TableCell>
-                  <TableCell className="text-right tabular">{fmt(result.perBay.wallM2)}</TableCell>
-                  <TableCell className="text-right tabular">{fmt(result.perBay.roofM2)}</TableCell>
-                  <TableCell className="text-right tabular">{fmt(result.perBay.apexM2)}</TableCell>
-                  <TableCell className="text-right tabular">{fmt(result.perBay.gableTriM2)}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
           </CardContent>
         </Card>
       </div>
@@ -191,9 +222,9 @@ function Stat({ label, value, unit, highlight }: { label: string; value: string;
   );
 }
 
-function AreaCard({ title, m2, panels, sub }: { title: string; m2: number; panels: number; sub?: string }) {
+function AreaCard({ title, m2, panels, sub, accent }: { title: string; m2: number; panels: number; sub?: string; accent?: boolean }) {
   return (
-    <Card>
+    <Card className={accent ? "border-primary/30" : ""}>
       <CardContent className="p-4">
         <div className="text-xs uppercase tracking-wider text-muted-foreground">{title}</div>
         <div className="mt-1 tabular text-2xl font-semibold">{fmt(m2)}<span className="ml-1 text-xs text-muted-foreground">m²</span></div>
