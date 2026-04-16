@@ -13,6 +13,8 @@ export const Route = createFileRoute("/pricing")({
   component: PricingPage,
 });
 
+type Edit = { cost: string; weight: string; width: string; height: string };
+
 function PricingPage() {
   const qc = useQueryClient();
   const pricingQ = useQuery({
@@ -24,23 +26,47 @@ function PricingPage() {
     },
   });
 
-  const [edits, setEdits] = useState<Record<string, { cost: string; weight: string }>>({});
+  const [edits, setEdits] = useState<Record<string, Edit>>({});
 
   useEffect(() => {
     if (pricingQ.data) {
-      const next: typeof edits = {};
+      const next: Record<string, Edit> = {};
       pricingQ.data.forEach((p) => {
-        next[p.id] = { cost: String(p.cost_per_m2 ?? ""), weight: String(p.weight_per_m2 ?? "") };
+        next[p.id] = {
+          cost: String(p.cost_per_m2 ?? ""),
+          weight: String(p.weight_per_m2 ?? ""),
+          width: String(p.panel_width ?? ""),
+          height: String(p.panel_height ?? ""),
+        };
       });
       setEdits(next);
     }
   }, [pricingQ.data]);
 
   const save = useMutation({
-    mutationFn: async ({ id, cost, weight }: { id: string; cost: number; weight: number | null }) => {
+    mutationFn: async ({
+      id,
+      cost,
+      weight,
+      width,
+      height,
+    }: {
+      id: string;
+      cost: number;
+      weight: number | null;
+      width: number;
+      height: number;
+    }) => {
+      if (!(width > 0) || !(height > 0)) throw new Error("Panel width and height must be greater than 0");
       const { error } = await supabase
         .from("lining_pricing")
-        .update({ cost_per_m2: cost, weight_per_m2: weight, updated_by: getUsername() })
+        .update({
+          cost_per_m2: cost,
+          weight_per_m2: weight,
+          panel_width: width,
+          panel_height: height,
+          updated_by: getUsername(),
+        })
         .eq("id", id);
       if (error) throw error;
     },
@@ -56,7 +82,7 @@ function PricingPage() {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Pricing</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Shared price book for each lining type & panel size. Component and labour cost columns are reserved for future breakdowns.
+          Shared price book for each lining type. Panel width × height feed directly into the calculator. Component and labour cost columns are reserved for future breakdowns.
         </p>
       </div>
 
@@ -67,7 +93,8 @@ function PricingPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Lining type</TableHead>
-                <TableHead className="text-right">Panel (m)</TableHead>
+                <TableHead className="text-right">Panel width (m)</TableHead>
+                <TableHead className="text-right">Panel height (m)</TableHead>
                 <TableHead className="text-right">Cost / m²</TableHead>
                 <TableHead className="text-right">Weight kg/m²</TableHead>
                 <TableHead className="text-right">Component cost</TableHead>
@@ -77,11 +104,33 @@ function PricingPage() {
             </TableHeader>
             <TableBody>
               {pricingQ.data?.map((p) => {
-                const e = edits[p.id] ?? { cost: "", weight: "" };
+                const e = edits[p.id] ?? { cost: "", weight: "", width: "", height: "" };
+                const widthNum = Number(e.width);
+                const heightNum = Number(e.height);
+                const dimsValid = widthNum > 0 && heightNum > 0;
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.lining_type}</TableCell>
-                    <TableCell className="text-right tabular">{Number(p.panel_width)}×{Number(p.panel_height)}</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={e.width}
+                        onChange={(ev) => setEdits({ ...edits, [p.id]: { ...e, width: ev.target.value } })}
+                        className={`w-20 text-right tabular ${widthNum > 0 ? "" : "border-destructive"}`}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={e.height}
+                        onChange={(ev) => setEdits({ ...edits, [p.id]: { ...e, height: ev.target.value } })}
+                        className={`w-20 text-right tabular ${heightNum > 0 ? "" : "border-destructive"}`}
+                      />
+                    </TableCell>
                     <TableCell className="text-right">
                       <Input type="number" step="0.01" value={e.cost} onChange={(ev) => setEdits({ ...edits, [p.id]: { ...e, cost: ev.target.value } })} className="w-28 text-right tabular" />
                     </TableCell>
@@ -91,7 +140,19 @@ function PricingPage() {
                     <TableCell className="text-right text-xs text-muted-foreground italic">soon</TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground italic">soon</TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" onClick={() => save.mutate({ id: p.id, cost: Number(e.cost) || 0, weight: e.weight === "" ? null : Number(e.weight) })} disabled={save.isPending}>
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          save.mutate({
+                            id: p.id,
+                            cost: Number(e.cost) || 0,
+                            weight: e.weight === "" ? null : Number(e.weight),
+                            width: widthNum,
+                            height: heightNum,
+                          })
+                        }
+                        disabled={save.isPending || !dimsValid}
+                      >
                         Save
                       </Button>
                     </TableCell>
@@ -100,13 +161,9 @@ function PricingPage() {
               })}
             </TableBody>
           </Table>
-          {p_loading(pricingQ.isLoading)}
+          {pricingQ.isLoading && <p className="mt-4 text-sm text-muted-foreground">Loading…</p>}
         </CardContent>
       </Card>
     </div>
   );
-}
-
-function p_loading(loading: boolean) {
-  return loading ? <p className="mt-4 text-sm text-muted-foreground">Loading…</p> : null;
 }
