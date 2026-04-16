@@ -24,18 +24,6 @@ interface Props {
 }
 
 export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props) {
-  const result = useMemo<CalcResult>(
-    () =>
-      calculate({
-        ...value,
-        costPerM2: pricing?.cost_per_m2 ?? value.costPerM2 ?? 0,
-        weightPerM2: pricing?.weight_per_m2 ?? value.weightPerM2 ?? 0,
-        panelW: pricing?.panel_width ?? value.panelW,
-        panelH: pricing?.panel_height ?? value.panelH,
-      }),
-    [value, pricing],
-  );
-
   const set = <K extends keyof CalcInput>(k: K, v: CalcInput[K]) => onChange({ ...value, [k]: v });
   const num = (s: string) => (s === "" ? 0 : Number(s));
 
@@ -49,6 +37,7 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
     panelW,
     panelH,
   };
+  const result = useMemo<CalcResult>(() => calculate(calcInput), [value, pricing]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
