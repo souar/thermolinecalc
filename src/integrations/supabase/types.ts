@@ -14,7 +14,243 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      jobs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          name: string
+          notes: string | null
+          reference: string | null
+          reference_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          name: string
+          notes?: string | null
+          reference?: string | null
+          reference_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          reference?: string | null
+          reference_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lining_pricing: {
+        Row: {
+          component_cost: number | null
+          cost_per_m2: number
+          id: string
+          labour_cost_per_panel: number | null
+          lining_type: string
+          panel_height: number
+          panel_width: number
+          updated_at: string
+          updated_by: string | null
+          weight_per_m2: number | null
+        }
+        Insert: {
+          component_cost?: number | null
+          cost_per_m2?: number
+          id?: string
+          labour_cost_per_panel?: number | null
+          lining_type: string
+          panel_height: number
+          panel_width: number
+          updated_at?: string
+          updated_by?: string | null
+          weight_per_m2?: number | null
+        }
+        Update: {
+          component_cost?: number | null
+          cost_per_m2?: number
+          id?: string
+          labour_cost_per_panel?: number | null
+          lining_type?: string
+          panel_height?: number
+          panel_width?: number
+          updated_at?: string
+          updated_by?: string | null
+          weight_per_m2?: number | null
+        }
+        Relationships: []
+      }
+      lining_results: {
+        Row: {
+          apex_width: number | null
+          breakdown_json: Json | null
+          created_at: string
+          gable_panels: number
+          gables_m2: number
+          id: string
+          roof_m2: number
+          roof_panels: number
+          spec_id: string
+          total_cost: number | null
+          total_m2: number
+          total_weight_kg: number | null
+          walls_m2: number
+          walls_panels: number
+        }
+        Insert: {
+          apex_width?: number | null
+          breakdown_json?: Json | null
+          created_at?: string
+          gable_panels: number
+          gables_m2: number
+          id?: string
+          roof_m2: number
+          roof_panels: number
+          spec_id: string
+          total_cost?: number | null
+          total_m2: number
+          total_weight_kg?: number | null
+          walls_m2: number
+          walls_panels: number
+        }
+        Update: {
+          apex_width?: number | null
+          breakdown_json?: Json | null
+          created_at?: string
+          gable_panels?: number
+          gables_m2?: number
+          id?: string
+          roof_m2?: number
+          roof_panels?: number
+          spec_id?: string
+          total_cost?: number | null
+          total_m2?: number
+          total_weight_kg?: number | null
+          walls_m2?: number
+          walls_panels?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lining_results_spec_id_fkey"
+            columns: ["spec_id"]
+            isOneToOne: false
+            referencedRelation: "marquee_specs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marquee_specs: {
+        Row: {
+          apex_override: number | null
+          bay_size: number
+          created_at: string
+          created_by: string | null
+          eave_height: number
+          id: string
+          job_id: string
+          length: number
+          lining_type: string
+          pitch_deg: number
+          roof_overhang_enabled: boolean
+          wall_floor_seal_enabled: boolean
+          width: number
+        }
+        Insert: {
+          apex_override?: number | null
+          bay_size?: number
+          created_at?: string
+          created_by?: string | null
+          eave_height: number
+          id?: string
+          job_id: string
+          length: number
+          lining_type: string
+          pitch_deg: number
+          roof_overhang_enabled?: boolean
+          wall_floor_seal_enabled?: boolean
+          width: number
+        }
+        Update: {
+          apex_override?: number | null
+          bay_size?: number
+          created_at?: string
+          created_by?: string | null
+          eave_height?: number
+          id?: string
+          job_id?: string
+          length?: number
+          lining_type?: string
+          pitch_deg?: number
+          roof_overhang_enabled?: boolean
+          wall_floor_seal_enabled?: boolean
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marquee_specs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
