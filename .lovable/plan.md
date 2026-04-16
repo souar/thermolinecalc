@@ -1,45 +1,40 @@
 
-## Calculator maths rewrite (final)
+## Make panel dimensions editable in Pricing
 
-### Accounting rules
-1. **m² = panels × actual panel size** (5×5 = 25 m², 3×5 = 15 m²)
-2. **Apex absorbs roof-to-wall overlap**: if `eaveHeight + roof_overlap > panelH`, grow apex width by the excess (×2 sides) so wall + roof panels stay full-size
-3. **Wall height handling** (after apex absorption):
-   - Fits in N full panels → stack N full panels per bay per side
-   - Leftover height < panelH → add **one custom-height wall panel** per bay per side (reported as a separate "Custom wall infill" sub-section under Walls)
-4. **Sections** (5 separate categories):
-   - **Walls** (full panels) — long sides, bay × 2 × stacks
-   - **Custom wall infill** (only if leftover) — short panels at bay width, leftover height
-   - **Gable walls** — rectangular fill below eave, both ends
-   - **Gable triangles** — custom triangles, max width = baySize, count forced **even** (split centre triangle if odd)
-   - **Apex** — custom strip, width × bay × bays
-5. **Roof** — full panels only (overlap pushed into apex)
+### Current state
+- `lining_pricing` table already has `panel_width` and `panel_height` columns (numeric, not null)
+- `src/routes/pricing.tsx` displays them as read-only text: `{Number(p.panel_width)}×{Number(p.panel_height)}`
+- `src/lib/calculator.ts` has hard-coded `LINING_TYPES` array with `panelW`/`panelH` — this is used as the source of truth in the calculator
+- `jobs.$jobId.tsx` matches pricing rows by looking up `LINING_TYPES` panel dims — creates a coupling that breaks if pricing dims diverge
 
-### `src/lib/calculator.ts` changes
-- Replace `gablesM2` / `gablePanels` with split fields: `gableWallsM2`, `gableWallsPanels`, `gableTriM2`, `gableTriCount`
-- Add `apexM2` as own field (remove apex-in-roof bundling)
-- Add `customWallInfill: { height, panelsCount, m2 } | null`
-- Add `warnings: string[]` (e.g. "Floor seal exceeds panel size — custom infill added")
-- New apex formula:
-  ```
-  excess = max(0, (eaveHeight + roofOverlap) - panelH)
-  apexWidth = geometricApex + 2 × excess
-  ```
-- Wall stacking:
-  ```
-  remainingWallH = eaveHeight + floorSeal - (apex absorbed amount)
-  fullStacks = floor(remainingWallH / panelH)
-  leftover = remainingWallH - fullStacks × panelH
-  wallPanels = bays × 2 × fullStacks
-  if leftover > 0: customInfill = { height: leftover, count: bays × 2 }
-  ```
-- Gable triangle count: `slices = ceil(width / baySize)`; if odd → `slices + 1` (centre split)
+### Changes
 
-### `src/components/CalculatorPanel.tsx` changes
-- Replace 3 area cards with **5 cards**: Walls · Custom infill (conditional) · Gable walls · Gable triangles · Apex
-- Add Alert banner above results when `warnings.length > 0`
-- Update top stats: total panels = sum of all sections + roof
-- Update per-bay table to reflect new section split
+**1. `src/routes/pricing.tsx`** — make width/height editable
+- Replace the static `Panel (m)` cell with two `Input type="number"` fields (width, height)
+- Extend `edits` state to include `width` and `height`
+- Update the save mutation to write `panel_width` and `panel_height` alongside cost/weight
 
-### Verification target
-Re-running your spreadsheet specs (30×50m, 5.4m eave, ~18° pitch) should yield wall/roof/apex/gable counts matching the spreadsheet, with apex auto-growing past geometric leftover when wall height pushes it.
+**2. `src/lib/calculator.ts`** — accept panel dims via input
+- Add optional `panelW?: number` and `panelH?: number` to `CalcInput`
+- When provided, override the values from `LINING_TYPES` (which becomes a fallback / default seed only)
+- Keep `LINING_TYPES` as the list of available lining type IDs + default dims/weight
+
+**3. `src/components/CalculatorPanel.tsx`** — pass through dims from pricing
+- Already receives `pricing` prop; extend it to include `panel_width` / `panel_height`
+- Pass these into the `calculate()` call
+
+**4. `src/routes/jobs.$jobId.tsx` & `src/routes/calculator.tsx`** — use pricing dims
+- When looking up `linePrice`, match by `lining_type` only (not by hard-coded panel dims), OR use the dims from the pricing row
+- Pass `panel_width` / `panel_height` through to `CalculatorPanel` / `calculate()`
+
+### Notes
+- No DB migration needed — columns already exist
+- Validation: width and height must be > 0; show inline error if not
+- Saving new dims will change calc results immediately (live re-render via query invalidation)
+
+### Files touched
+- `src/routes/pricing.tsx`
+- `src/lib/calculator.ts`
+- `src/components/CalculatorPanel.tsx`
+- `src/routes/jobs.$jobId.tsx`
+- `src/routes/calculator.tsx` (if it also passes pricing — verify during implementation)
