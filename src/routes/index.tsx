@@ -1,26 +1,134 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Plus, FolderOpen, ExternalLink } from "lucide-react";
+import { getUsername } from "@/lib/username";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: DashboardPage,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
+function DashboardPage() {
+  const qc = useQueryClient();
+
+  const customersQ = useQuery({
+    queryKey: ["customers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*, jobs(id, name, reference, reference_url, updated_at, created_by)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+
+  const createCustomer = useMutation({
+    mutationFn: async (n: string) => {
+      const { data, error } = await supabase
+        .from("customers")
+        .insert({ name: n, created_by: getUsername() })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Customer added");
+      setOpen(false);
+      setName("");
+      qc.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="space-y-6">
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Customers and the jobs underneath them.</p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button><Plus className="mr-1 h-4 w-4" /> New customer</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>New customer</DialogTitle></DialogHeader>
+            <div className="space-y-2">
+              <Label>Customer name</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Gaylord Hotels" autoFocus />
+            </div>
+            <DialogFooter>
+              <Button onClick={() => createCustomer.mutate(name)} disabled={!name.trim() || createCustomer.isPending}>
+                Create
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {customersQ.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+
+      {customersQ.data && customersQ.data.length === 0 && (
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            No customers yet. Create your first one to start saving jobs.
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {customersQ.data?.map((c: any) => (
+          <Card key={c.id}>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
+              <div>
+                <CardTitle className="text-lg">{c.name}</CardTitle>
+                {c.created_by && <p className="text-xs text-muted-foreground">added by {c.created_by}</p>}
+              </div>
+              <Link to="/customers/$customerId" params={{ customerId: c.id }} className="text-sm text-primary hover:underline">
+                Open
+              </Link>
+            </CardHeader>
+            <CardContent>
+              {c.jobs && c.jobs.length > 0 ? (
+                <ul className="space-y-2">
+                  {c.jobs.slice(0, 4).map((j: any) => (
+                    <li key={j.id} className="flex items-center justify-between rounded border border-border px-3 py-2 text-sm">
+                      <Link to="/jobs/$jobId" params={{ jobId: j.id }} className="flex items-center gap-2 hover:text-primary">
+                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                        <span>{j.name}</span>
+                        {j.reference && (
+                          j.reference_url ? (
+                            <a href={j.reference_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground hover:text-primary">
+                              {j.reference} <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{j.reference}</span>
+                          )
+                        )}
+                      </Link>
+                      {j.created_by && <span className="text-xs text-muted-foreground">{j.created_by}</span>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">No jobs yet.</p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
 }
