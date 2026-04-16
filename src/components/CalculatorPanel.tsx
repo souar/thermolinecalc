@@ -145,7 +145,7 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
             title="Walls"
             m2={result.wallsM2}
             panels={result.wallsPanels}
-            sub={`${result.wallStacks} stack${result.wallStacks === 1 ? "" : "s"} × ${result.bays} bays × 2 sides`}
+            sub={`${result.wallStacks} stack${result.wallStacks === 1 ? "" : "s"} × ${result.bays} bays × 2 sides · ${fmt(panelW)}×${fmt(panelH)}m panels`}
           />
           {result.customWallInfill ? (
             <AreaCard
@@ -154,6 +154,7 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
               panels={result.customWallInfill.panelsCount}
               sub={`${fmt(result.customWallInfill.height)}m tall (custom cut)`}
               accent
+              customCut
             />
           ) : (
             <EmptyCard title="Custom wall infill" sub="Not needed — wall fits whole panels" />
@@ -162,7 +163,7 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
             title="Roof"
             m2={result.roofM2}
             panels={result.roofPanels}
-            sub={`full panels only`}
+            sub={`full panels only · ${fmt(panelW)}×${fmt(panelH)}m panels`}
           />
           <AreaCard
             title="Apex"
@@ -170,12 +171,13 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
             panels={result.apexPieces}
             sub={`${fmt(result.apexWidth)}m × ${fmt(value.baySize, 0)}m × ${result.bays} bays`}
             accent
+            customCut
           />
           <AreaCard
             title="Gable walls"
             m2={result.gableWallsM2}
             panels={result.gableWallsPanels}
-            sub={`rectangular fill, both ends`}
+            sub={`rectangular fill, both ends · ${fmt(panelW)}×${fmt(panelH)}m panels`}
           />
           <AreaCard
             title="Gable triangles"
@@ -183,6 +185,7 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
             panels={result.gableTriCount}
             sub={`custom triangles, max ${value.baySize}m wide`}
             accent
+            customCut
           />
         </div>
 
