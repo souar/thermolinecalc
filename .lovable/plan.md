@@ -1,65 +1,45 @@
 
-## Marquee Lining Calculator + Project Persistence (revised)
+## Calculator maths rewrite (final)
 
-### Scope changes from previous plan
-- **No auth** — skip Supabase auth entirely for now
-- **Shared workspace** — all users see all customers/jobs/pricing
-- **Username gate** — first visit prompts for a display name, stored in localStorage, attached to records as `created_by` for attribution
+### Accounting rules
+1. **m² = panels × actual panel size** (5×5 = 25 m², 3×5 = 15 m²)
+2. **Apex absorbs roof-to-wall overlap**: if `eaveHeight + roof_overlap > panelH`, grow apex width by the excess (×2 sides) so wall + roof panels stay full-size
+3. **Wall height handling** (after apex absorption):
+   - Fits in N full panels → stack N full panels per bay per side
+   - Leftover height < panelH → add **one custom-height wall panel** per bay per side (reported as a separate "Custom wall infill" sub-section under Walls)
+4. **Sections** (5 separate categories):
+   - **Walls** (full panels) — long sides, bay × 2 × stacks
+   - **Custom wall infill** (only if leftover) — short panels at bay width, leftover height
+   - **Gable walls** — rectangular fill below eave, both ends
+   - **Gable triangles** — custom triangles, max width = baySize, count forced **even** (split centre triangle if odd)
+   - **Apex** — custom strip, width × bay × bays
+5. **Roof** — full panels only (overlap pushed into apex)
 
-### Data model
+### `src/lib/calculator.ts` changes
+- Replace `gablesM2` / `gablePanels` with split fields: `gableWallsM2`, `gableWallsPanels`, `gableTriM2`, `gableTriCount`
+- Add `apexM2` as own field (remove apex-in-roof bundling)
+- Add `customWallInfill: { height, panelsCount, m2 } | null`
+- Add `warnings: string[]` (e.g. "Floor seal exceeds panel size — custom infill added")
+- New apex formula:
+  ```
+  excess = max(0, (eaveHeight + roofOverlap) - panelH)
+  apexWidth = geometricApex + 2 × excess
+  ```
+- Wall stacking:
+  ```
+  remainingWallH = eaveHeight + floorSeal - (apex absorbed amount)
+  fullStacks = floor(remainingWallH / panelH)
+  leftover = remainingWallH - fullStacks × panelH
+  wallPanels = bays × 2 × fullStacks
+  if leftover > 0: customInfill = { height: leftover, count: bays × 2 }
+  ```
+- Gable triangle count: `slices = ceil(width / baySize)`; if odd → `slices + 1` (centre split)
 
-```text
-users (lightweight, no auth)
-  id, username, created_at
+### `src/components/CalculatorPanel.tsx` changes
+- Replace 3 area cards with **5 cards**: Walls · Custom infill (conditional) · Gable walls · Gable triangles · Apex
+- Add Alert banner above results when `warnings.length > 0`
+- Update top stats: total panels = sum of all sections + roof
+- Update per-bay table to reflect new section split
 
-customers
-  id, name, created_by (username), created_at
-
-jobs
-  id, customer_id, name, reference, reference_url (nullable),
-  notes, created_by, created_at, updated_at
-
-marquee_specs
-  id, job_id, length, width, eave_height, pitch_deg, bay_size,
-  lining_type, roof_overhang_enabled, wall_floor_seal_enabled,
-  apex_override (nullable), created_by, created_at
-
-lining_results (cached calc snapshot)
-  id, spec_id, walls_m2, roof_m2, gables_m2, total_m2,
-  walls_panels, roof_panels, gable_panels, apex_width,
-  total_weight_kg, total_cost, breakdown_json, created_at
-
-lining_pricing (shared price book)
-  id, lining_type, panel_width, panel_height, cost_per_m2,
-  component_cost (nullable, future), labour_cost_per_panel (nullable, future),
-  updated_by, updated_at
-```
-
-RLS: enabled but permissive (public read + public write) so anyone can use it. Structure is ready to tighten when auth is added later.
-
-### Username flow
-- On first load, modal asks "What's your name?" → saved to `users` table + localStorage
-- Username displayed in header with a "switch user" option
-- Every create/update writes `created_by` so the UI can show "Created by Alice" on cards
-
-### Routes
-- `/` — dashboard: customer list + recent jobs across everyone
-- `/customers/$customerId` — jobs under that customer
-- `/jobs/$jobId` — calculator + saved spec + cached results
-- `/calculator` — standalone quick calc (no save)
-- `/pricing` — shared price book editor
-
-### Calculator behaviour
-- Standalone (`/calculator`): pure math, localStorage only
-- Job mode: inputs auto-save to `marquee_specs`, results cached, costs pulled from `lining_pricing`
-- "Save as new revision" creates a new spec row to preserve history
-
-### Future-ready
-- `lining_pricing` already has nullable `component_cost` and `labour_cost_per_panel` columns
-- Schema includes `created_by` everywhere → trivial to wire to real auth later by mapping to `auth.uid()`
-
-### Stack
-- Lovable Cloud (Supabase) for DB only, no auth module
-- TanStack Query for data fetching
-- shadcn/ui + react-hook-form + zod
-- Clean technical/engineering visual style, monospace numbers
+### Verification target
+Re-running your spreadsheet specs (30×50m, 5.4m eave, ~18° pitch) should yield wall/roof/apex/gable counts matching the spreadsheet, with apex auto-growing past geometric leftover when wall height pushes it.
