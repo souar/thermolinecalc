@@ -199,7 +199,9 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
             </div>
           </CardContent>
         </Card>
-      </div>
+
+        <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
+        <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
     </div>
   );
 }
