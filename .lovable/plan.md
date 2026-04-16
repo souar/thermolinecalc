@@ -1,62 +1,71 @@
 
-## Cap apex at max panel size — final fix
+## Calculator output redesign
 
-### Diagnosis
-With MAL30 (5×3m), eave 15m, no overlaps:
-- `wallWithOverlap = 15 + 0 = 15m`, `panelH = 3m` → `overlapExcess = 12m`
-- Apex grows by `2 × 12 = 24m` → 24.8m apex
+### 1. Panel count as primary metric
+In `AreaCard` (CalculatorPanel.tsx), swap the visual hierarchy:
+- **Primary (large)**: panel count + "panels"
+- **Secondary (smaller)**: m² value
+- Keep `sub` description below
 
-The "absorb overlap into apex" branch is wrong when the wall itself is taller than one panel — that's not overlap, that's just a tall wall that needs **stacked panels**, not apex absorption.
+Apply same swap to top stats row: "Total panels" becomes the highlighted/largest stat, "Total area" becomes secondary.
 
-### Correct rule
-Overlap absorption should only consider the **excess from the overhang/seal**, not the entire wall height. Walls > panelH are handled by stacking (already works correctly via `fullStacks`).
+### 2. Stable layout for section cards
+Current issue: `customWallInfill` card only renders when needed, shifting all other cards in the grid.
 
-Then **clamp apex at `max(panelW, panelH)`**. If geometric apex still exceeds that cap, drop one roof panel row per side (apex absorbs the freed slope length instead).
+Fix: use a **fixed 2-column grid grouped by area type**, with each section in a deterministic slot:
 
-### Changes in `src/lib/calculator.ts`
-
-**1. Fix overlap excess calculation:**
-```ts
-// OLD: const wallWithOverlap = eaveHeight + roofOverlap;
-//      const overlapExcess = Math.max(0, wallWithOverlap - panelH);
-
-// NEW: only the overhang itself can push apex; wall stacking handles tall walls
-const overlapExcess = roofOverlap; // 0 or 0.25m
-```
-(The intent of the original was to handle roof-overlap eating into wall panels — but with overlap of 0.25m and panels ≥ 3m, this is always just the overhang itself.)
-
-**2. Clamp apex at panel max with roof-row fallback:**
-```ts
-const apexMax = Math.max(panelW, panelH);
-let apexAuto = geometricApex + 2 * overlapExcess;
-let roofPanelsPerSide = wholeAlongSlope;
-
-while (apexAuto > apexMax && roofPanelsPerSide > 0) {
-  roofPanelsPerSide -= 1;
-  const newGeo = Math.max(0, (effectiveSlope - roofPanelsPerSide * panelH) * 2);
-  apexAuto = newGeo + 2 * overlapExcess;
-}
-
-if (apexAuto > apexMax) {
-  warnings.push(`Apex ${apexAuto.toFixed(2)}m exceeds max panel ${apexMax}m — geometry may need review.`);
-}
+```text
+┌─────────────────┬─────────────────┐
+│ Walls           │ Custom infill   │  ← infill slot always present
+│                 │ (or "—" empty)  │
+├─────────────────┼─────────────────┤
+│ Roof            │ Apex            │
+├─────────────────┼─────────────────┤
+│ Gable walls     │ Gable triangles │
+└─────────────────┴─────────────────┘
 ```
 
-**3. Clamp manual override too:**
-```ts
-if (apexOverride && apexOverride > apexMax) {
-  warnings.push(`Apex override ${apexOverride}m exceeds max panel size ${apexMax}m.`);
-}
-```
+When no custom infill is needed, render a muted placeholder card ("No custom infill needed") in that slot so positions never shift. Group walls/infill, roof/apex, gables together for logical scanning.
 
-**4. Use `roofPanelsPerSide` (not `wholeAlongSlope`) for `roofPanels`.**
+### 3. Ridge height from ground
+In `calculator.ts`, currently `ridgeHeight = halfWidth * tan(pitch)` = peak above eave only.
+Change displayed ridge height to `eaveHeight + halfWidth * tan(pitch)` = total ground-to-peak.
+- Add new field `ridgeHeightTotal` to `CalcResult` (keep `ridgeHeight` as the apex-rise above eave for internal gable triangle math)
+- Update Geometry card KV to show `ridgeHeightTotal`
 
-### Verification matrix
-| Config | Expected |
-|---|---|
-| 50×35, eave 15, MAL30, no overlaps | apex ≤ 5m, walls 5 stacks, roof recalculated |
-| 50×30, eave 5.4, MAL18, both overlaps | apex ~1.55m + 0.5m = 2.05m (under 5m cap) |
-| 50×30, eave 3, MAL18 defaults | apex unchanged from current correct behaviour |
+### 4. Single bay diagram + table
+New component `BayDiagram.tsx` rendering an inline SVG cross-section of one bay viewed from the end:
+- Two wall stacks (left + right) showing N stacked panels + optional infill strip
+- Two roof slopes meeting at apex
+- Apex strip highlighted at top
+- Labels: panel count per zone, dimensions
+
+Plus a compact table beside it:
+| Section | Per bay | Panel size | m² per bay |
+|---|---|---|---|
+| Wall (each side) | 1 stack × N | 5×5 | … |
+| Custom infill | 1 (if needed) | 5×0.65 | … |
+| Roof (each side) | N panels | 5×5 | … |
+| Apex | 1 strip | W×bay | … |
+
+### 5. Gable end diagram
+New component `GableDiagram.tsx` rendering the gable end elevation:
+- Rectangular gable wall section (full panels grid based on `width / panelW × fullStacks`)
+- Triangle on top split into the calculated even-numbered slices (max baySize wide)
+- Labels showing panel count per zone
+
+Both diagrams: pure SVG, use `currentColor` / theme tokens (`stroke-border`, `fill-muted`, `fill-primary/10` for highlights). Responsive via viewBox. Numbers fed from `CalcResult`.
+
+### Layout order in CalculatorPanel results column
+1. Warnings alert (unchanged)
+2. Top stats (panel count primary)
+3. **Bay diagram + table** (new card)
+4. **Gable end diagram** (new card)
+5. Section cards grid (stable 6-slot layout)
+6. Geometry card (with corrected ridge height)
 
 ### Files
-- `src/lib/calculator.ts` only
+- `src/lib/calculator.ts` — add `ridgeHeightTotal` to result
+- `src/components/CalculatorPanel.tsx` — restructure stats, swap card hierarchy, stable grid, integrate new diagrams
+- `src/components/BayDiagram.tsx` — new
+- `src/components/GableDiagram.tsx` — new
