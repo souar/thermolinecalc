@@ -258,11 +258,14 @@ function Stat({ label, value, unit, highlight }: { label: string; value: string;
   );
 }
 
-function AreaCard({ title, m2, panels, sub, accent }: { title: string; m2: number; panels: number; sub?: string; accent?: boolean }) {
+function AreaCard({ title, m2, panels, sub, accent, customCut }: { title: string; m2: number; panels: number; sub?: string; accent?: boolean; customCut?: boolean }) {
   return (
     <Card className={accent ? "border-primary/30" : ""}>
       <CardContent className="p-4">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">{title}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">{title}</div>
+          {customCut && <Badge variant="outline" className="text-[10px] uppercase tracking-wider">Custom cut</Badge>}
+        </div>
         <div className="mt-1 tabular text-3xl font-semibold">
           {panels}<span className="ml-1 text-xs text-muted-foreground">panels</span>
         </div>
