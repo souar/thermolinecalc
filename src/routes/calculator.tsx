@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalculatorPanel } from "@/components/CalculatorPanel";
-import { CalcInput, DEFAULT_INPUT, LINING_TYPES } from "@/lib/calculator";
+import { CalcInput, DEFAULT_INPUT } from "@/lib/calculator";
 
 export const Route = createFileRoute("/calculator")({
   component: QuickCalc,
@@ -33,10 +33,7 @@ function QuickCalc() {
     },
   });
 
-  const def = LINING_TYPES.find((l) => l.id === input.liningType);
-  const linePrice = pricingQ.data?.find(
-    (p) => p.lining_type === input.liningType && Number(p.panel_width) === def?.panelW && Number(p.panel_height) === def?.panelH,
-  );
+  const linePrice = pricingQ.data?.find((p) => p.lining_type === input.liningType);
 
   return (
     <div className="space-y-6">
@@ -47,7 +44,16 @@ function QuickCalc() {
       <CalculatorPanel
         value={input}
         onChange={setInput}
-        pricing={linePrice ? { cost_per_m2: Number(linePrice.cost_per_m2), weight_per_m2: linePrice.weight_per_m2 != null ? Number(linePrice.weight_per_m2) : null } : null}
+        pricing={
+          linePrice
+            ? {
+                cost_per_m2: Number(linePrice.cost_per_m2),
+                weight_per_m2: linePrice.weight_per_m2 != null ? Number(linePrice.weight_per_m2) : null,
+                panel_width: Number(linePrice.panel_width),
+                panel_height: Number(linePrice.panel_height),
+              }
+            : null
+        }
       />
     </div>
   );

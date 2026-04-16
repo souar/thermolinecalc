@@ -11,7 +11,12 @@ import { AlertTriangle } from "lucide-react";
 interface Props {
   value: CalcInput;
   onChange: (v: CalcInput) => void;
-  pricing?: { cost_per_m2: number; weight_per_m2: number | null } | null;
+  pricing?: {
+    cost_per_m2: number;
+    weight_per_m2: number | null;
+    panel_width?: number | null;
+    panel_height?: number | null;
+  } | null;
   rightExtra?: React.ReactNode;
 }
 
@@ -22,6 +27,8 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
         ...value,
         costPerM2: pricing?.cost_per_m2 ?? value.costPerM2 ?? 0,
         weightPerM2: pricing?.weight_per_m2 ?? value.weightPerM2 ?? 0,
+        panelW: pricing?.panel_width ?? value.panelW,
+        panelH: pricing?.panel_height ?? value.panelH,
       }),
     [value, pricing],
   );

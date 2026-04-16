@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalculatorPanel } from "@/components/CalculatorPanel";
-import { CalcInput, DEFAULT_INPUT, calculate, LINING_TYPES } from "@/lib/calculator";
+import { CalcInput, DEFAULT_INPUT, calculate } from "@/lib/calculator";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, Save } from "lucide-react";
 import { getUsername } from "@/lib/username";
@@ -60,12 +60,7 @@ function JobPage() {
     });
   }, [jobQ.data]);
 
-  const linePrice = pricingQ.data?.find(
-    (p) =>
-      p.lining_type === input.liningType &&
-      Number(p.panel_width) === LINING_TYPES.find((l) => l.id === input.liningType)?.panelW &&
-      Number(p.panel_height) === LINING_TYPES.find((l) => l.id === input.liningType)?.panelH,
-  );
+  const linePrice = pricingQ.data?.find((p) => p.lining_type === input.liningType);
 
   const saveSpec = useMutation({
     mutationFn: async () => {
@@ -73,6 +68,8 @@ function JobPage() {
         ...input,
         costPerM2: linePrice?.cost_per_m2 ?? 0,
         weightPerM2: linePrice?.weight_per_m2 ?? 0,
+        panelW: linePrice?.panel_width != null ? Number(linePrice.panel_width) : undefined,
+        panelH: linePrice?.panel_height != null ? Number(linePrice.panel_height) : undefined,
       });
       const { data: spec, error } = await supabase
         .from("marquee_specs")
@@ -150,7 +147,16 @@ function JobPage() {
       <CalculatorPanel
         value={input}
         onChange={setInput}
-        pricing={linePrice ? { cost_per_m2: Number(linePrice.cost_per_m2), weight_per_m2: linePrice.weight_per_m2 != null ? Number(linePrice.weight_per_m2) : null } : null}
+        pricing={
+          linePrice
+            ? {
+                cost_per_m2: Number(linePrice.cost_per_m2),
+                weight_per_m2: linePrice.weight_per_m2 != null ? Number(linePrice.weight_per_m2) : null,
+                panel_width: Number(linePrice.panel_width),
+                panel_height: Number(linePrice.panel_height),
+              }
+            : null
+        }
       />
 
       {revisions.length > 0 && (
