@@ -138,9 +138,6 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
           <Stat label="Cost" value={fmt(result.totalCost)} unit={pricing ? "" : "(set price)"} />
         </div>
 
-        <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
-        <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
-
         <div className="grid gap-3 sm:grid-cols-2">
           <AreaCard
             title="Walls"
