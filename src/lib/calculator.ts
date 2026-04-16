@@ -113,19 +113,38 @@ export function calculate(input: CalcInput): CalcResult {
   const wholeAlongSlope = Math.floor(effectiveSlope / panelH);
   const geometricApex = Math.max(0, (effectiveSlope - wholeAlongSlope * panelH) * 2);
 
-  // If wall + roof overlap exceeds a single panel height, grow apex by the excess
-  // (×2 because pulling the roof up on both sides adds to the ridge strip)
-  const wallWithOverlap = eaveHeight + roofOverlap;
-  const overlapExcess = Math.max(0, wallWithOverlap - panelH);
-  const apexAuto = geometricApex + 2 * overlapExcess;
-  const apexWidth = apexOverride != null && apexOverride > 0 ? apexOverride : apexAuto;
-  if (overlapExcess > 0) {
+  // Only the overhang itself contributes to apex absorption.
+  // Tall walls are handled by stacking full panels (see wall section below),
+  // not by growing the apex.
+  const overlapExcess = roofOverlap;
+
+  // Clamp apex at the largest single panel dimension. If geometric apex
+  // exceeds that cap, drop one roof panel row per side — the freed slope
+  // length flows into the apex strip instead.
+  const apexMax = Math.max(panelW, panelH);
+  let apexAuto = geometricApex + 2 * overlapExcess;
+  let roofPanelsPerSide = wholeAlongSlope;
+
+  while (apexAuto > apexMax && roofPanelsPerSide > 0) {
+    roofPanelsPerSide -= 1;
+    const newGeo = Math.max(0, (effectiveSlope - roofPanelsPerSide * panelH) * 2);
+    apexAuto = newGeo + 2 * overlapExcess;
+  }
+
+  if (apexAuto > apexMax) {
     warnings.push(
-      `Wall + roof overlap (${(wallWithOverlap).toFixed(2)}m) exceeds panel height ${panelH}m — apex grown by ${(2 * overlapExcess).toFixed(2)}m to absorb it.`,
+      `Apex ${apexAuto.toFixed(2)}m still exceeds max panel size ${apexMax}m — geometry may need review.`,
     );
   }
 
-  const roofPanels = wholeAlongSlope * 2 * bays;
+  const apexWidth = apexOverride != null && apexOverride > 0 ? apexOverride : apexAuto;
+  if (apexOverride != null && apexOverride > apexMax) {
+    warnings.push(
+      `Apex override ${apexOverride}m exceeds max panel size ${apexMax}m — apex pieces are custom-cut from a single panel.`,
+    );
+  }
+
+  const roofPanels = roofPanelsPerSide * 2 * bays;
   const roofM2 = roofPanels * panelArea;
 
   const apexPieces = bays;
