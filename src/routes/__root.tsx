@@ -1,49 +1,37 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/sonner";
+import { UsernameGate } from "@/components/UsernameGate";
 
 import appCss from "../styles.css?url";
+
+interface RouterContext {
+  queryClient: QueryClient;
+}
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
-        </div>
+        <p className="mt-2 text-sm text-muted-foreground">Page not found.</p>
+        <Link to="/" className="mt-6 inline-flex rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+          Go home
+        </Link>
       </div>
     </div>
   );
 }
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { title: "Marquee Lining Calculator" },
+      { name: "description", content: "Calculate marquee wall, roof, gable lining areas, panels and costs." },
     ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -65,5 +53,47 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  return <Outlet />;
+  const { queryClient } = Route.useRouteContext();
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppShell />
+    </QueryClientProvider>
+  );
+}
+
+function AppShell() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Header />
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Outlet />
+      </main>
+      <UsernameGate />
+      <Toaster />
+    </div>
+  );
+}
+
+function Header() {
+  return (
+    <header className="border-b border-border bg-card/60 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded bg-primary" />
+          <span className="text-base font-semibold tracking-tight">Marquee Linings</span>
+        </Link>
+        <nav className="flex items-center gap-1 text-sm">
+          <Link to="/" activeOptions={{ exact: true }} className="rounded px-3 py-1.5 text-muted-foreground hover:bg-muted [&.active]:bg-secondary [&.active]:text-foreground" activeProps={{ className: "active" }}>
+            Projects
+          </Link>
+          <Link to="/calculator" className="rounded px-3 py-1.5 text-muted-foreground hover:bg-muted [&.active]:bg-secondary [&.active]:text-foreground" activeProps={{ className: "active" }}>
+            Quick calc
+          </Link>
+          <Link to="/pricing" className="rounded px-3 py-1.5 text-muted-foreground hover:bg-muted [&.active]:bg-secondary [&.active]:text-foreground" activeProps={{ className: "active" }}>
+            Pricing
+          </Link>
+        </nav>
+      </div>
+    </header>
+  );
 }
