@@ -7,6 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { BayDiagram } from "./BayDiagram";
+import { GableDiagram } from "./GableDiagram";
+import { LINING_TYPES as LT } from "@/lib/calculator";
 
 interface Props {
   value: CalcInput;
@@ -21,20 +24,20 @@ interface Props {
 }
 
 export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props) {
-  const result = useMemo<CalcResult>(
-    () =>
-      calculate({
-        ...value,
-        costPerM2: pricing?.cost_per_m2 ?? value.costPerM2 ?? 0,
-        weightPerM2: pricing?.weight_per_m2 ?? value.weightPerM2 ?? 0,
-        panelW: pricing?.panel_width ?? value.panelW,
-        panelH: pricing?.panel_height ?? value.panelH,
-      }),
-    [value, pricing],
-  );
-
   const set = <K extends keyof CalcInput>(k: K, v: CalcInput[K]) => onChange({ ...value, [k]: v });
   const num = (s: string) => (s === "" ? 0 : Number(s));
+
+  const liningDef = LT.find((l) => l.id === value.liningType) ?? LT[0];
+  const panelW = pricing?.panel_width ?? liningDef.panelW;
+  const panelH = pricing?.panel_height ?? liningDef.panelH;
+  const calcInput: CalcInput = {
+    ...value,
+    costPerM2: pricing?.cost_per_m2 ?? value.costPerM2 ?? 0,
+    weightPerM2: pricing?.weight_per_m2 ?? value.weightPerM2 ?? 0,
+    panelW,
+    panelH,
+  };
+  const result = useMemo<CalcResult>(() => calculate(calcInput), [value, pricing]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
@@ -129,20 +132,23 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
         )}
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Total area" value={fmt(result.totalM2)} unit="m²" highlight />
-          <Stat label="Total panels" value={String(result.totalPanels)} unit="pcs" />
+          <Stat label="Total panels" value={String(result.totalPanels)} unit="pcs" highlight />
+          <Stat label="Total area" value={fmt(result.totalM2)} unit="m²" />
           <Stat label="Weight" value={fmt(result.totalWeightKg, 1)} unit="kg" />
           <Stat label="Cost" value={fmt(result.totalCost)} unit={pricing ? "" : "(set price)"} />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
+        <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
+
+        <div className="grid gap-3 sm:grid-cols-2">
           <AreaCard
             title="Walls"
             m2={result.wallsM2}
             panels={result.wallsPanels}
             sub={`${result.wallStacks} stack${result.wallStacks === 1 ? "" : "s"} × ${result.bays} bays × 2 sides`}
           />
-          {result.customWallInfill && (
+          {result.customWallInfill ? (
             <AreaCard
               title="Custom wall infill"
               m2={result.customWallInfill.m2}
@@ -150,6 +156,8 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
               sub={`${fmt(result.customWallInfill.height)}m tall (custom cut)`}
               accent
             />
+          ) : (
+            <EmptyCard title="Custom wall infill" sub="Not needed — wall fits whole panels" />
           )}
           <AreaCard
             title="Roof"
@@ -188,7 +196,7 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
           <CardContent>
             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <KV k="Slope length" v={`${fmt(result.slopeLength)} m`} />
-              <KV k="Ridge height" v={`${fmt(result.ridgeHeight)} m`} />
+              <KV k="Ridge height (total)" v={`${fmt(result.ridgeHeightTotal)} m`} />
               <KV k="Bays" v={String(result.bays)} />
               <KV k="Apex (auto)" v={`${fmt(result.apexAuto)} m`} />
             </div>
@@ -196,6 +204,18 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
         </Card>
       </div>
     </div>
+  );
+}
+
+function EmptyCard({ title, sub }: { title: string; sub: string }) {
+  return (
+    <Card className="border-dashed bg-muted/20">
+      <CardContent className="p-4">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">{title}</div>
+        <div className="mt-1 tabular text-2xl font-semibold text-muted-foreground/60">—</div>
+        <div className="mt-1 text-xs text-muted-foreground">{sub}</div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -234,8 +254,10 @@ function AreaCard({ title, m2, panels, sub, accent }: { title: string; m2: numbe
     <Card className={accent ? "border-primary/30" : ""}>
       <CardContent className="p-4">
         <div className="text-xs uppercase tracking-wider text-muted-foreground">{title}</div>
-        <div className="mt-1 tabular text-2xl font-semibold">{fmt(m2)}<span className="ml-1 text-xs text-muted-foreground">m²</span></div>
-        <div className="mt-1 text-sm text-muted-foreground">{panels} panels</div>
+        <div className="mt-1 tabular text-3xl font-semibold">
+          {panels}<span className="ml-1 text-xs text-muted-foreground">panels</span>
+        </div>
+        <div className="mt-0.5 tabular text-sm text-muted-foreground">{fmt(m2)} m²</div>
         {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
       </CardContent>
     </Card>

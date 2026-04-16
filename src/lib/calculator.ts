@@ -37,7 +37,8 @@ export interface CustomInfill {
 export interface CalcResult {
   // geometry
   slopeLength: number;
-  ridgeHeight: number;
+  ridgeHeight: number; // apex rise above eave (internal use)
+  ridgeHeightTotal: number; // total ground-to-peak
   bays: number;
 
   // walls (long sides)
@@ -204,6 +205,7 @@ export function calculate(input: CalcInput): CalcResult {
   return {
     slopeLength,
     ridgeHeight,
+    ridgeHeightTotal: eaveHeight + ridgeHeight,
     bays,
     wallsM2,
     wallsPanels,
