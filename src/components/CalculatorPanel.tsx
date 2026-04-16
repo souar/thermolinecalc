@@ -10,6 +10,7 @@ import { AlertTriangle } from "lucide-react";
 import { BayDiagram } from "./BayDiagram";
 import { GableDiagram } from "./GableDiagram";
 import { LINING_TYPES as LT } from "@/lib/calculator";
+import { Badge } from "@/components/ui/badge";
 
 interface Props {
   value: CalcInput;
