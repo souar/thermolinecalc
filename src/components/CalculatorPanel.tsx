@@ -40,7 +40,8 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
   const result = useMemo<CalcResult>(() => calculate(calcInput), [value, pricing]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[420px_1fr] items-start">
       {/* Inputs */}
       <Card>
         <CardHeader>
@@ -200,6 +201,10 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
           </CardContent>
         </Card>
 
+      </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
         <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
         <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
       </div>
