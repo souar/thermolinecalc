@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalculatorPanel } from "@/components/CalculatorPanel";
-import { CalcInput, DEFAULT_INPUT, LINING_TYPES } from "@/lib/calculator";
+import { CalcInput, DEFAULT_INPUT } from "@/lib/calculator";
 
 export const Route = createFileRoute("/calculator")({
   component: QuickCalc,
