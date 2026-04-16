@@ -22,6 +22,10 @@ export interface CalcInput {
   apexOverride?: number | null;
   costPerM2?: number;
   weightPerM2?: number;
+  /** Override panel width from pricing row. Falls back to LINING_TYPES default. */
+  panelW?: number;
+  /** Override panel height from pricing row. Falls back to LINING_TYPES default. */
+  panelH?: number;
 }
 
 export interface CustomInfill {
