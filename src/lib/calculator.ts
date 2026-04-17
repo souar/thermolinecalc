@@ -325,11 +325,13 @@ export function calculate(input: CalcInput): CalcResult {
 
   // ---- Totals ----
   const customM2 = customWallInfill?.m2 ?? 0;
-  const totalM2 = wallsM2 + customM2 + roofM2 + apexM2 + gableWallsM2 + gableTriM2;
+  const eaveM2 = customRoofEave?.m2 ?? 0;
+  const totalM2 = wallsM2 + customM2 + roofM2 + eaveM2 + apexM2 + gableWallsM2 + gableTriM2;
   const totalPanels =
     wallsPanels +
     (customWallInfill?.panelsCount ?? 0) +
     roofPanels +
+    (customRoofEave?.panelsCount ?? 0) +
     apexPieces +
     gableWallsPanels +
     gableTriCount +
