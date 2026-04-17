@@ -158,8 +158,8 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
                 <Row
                   label="Wall (each side)"
                   qty={`2 × ${wallStacks}`}
-                  size={`${fmt(panelW, 0)}×${fmt(panelH, 0)}`}
-                  m2={2 * wallStacks * panelW * panelH}
+                  size={`${fmt(panelW, 0)}×${fmt(result.wallPanelHeight)}`}
+                  m2={2 * wallStacks * panelW * result.wallPanelHeight}
                 />
                 {customWallInfill && (
                   <Row
@@ -173,9 +173,18 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
                 <Row
                   label="Roof (each side)"
                   qty={`2 × ${roofPanelsPerSide}`}
-                  size={`${fmt(panelW, 0)}×${fmt(panelH, 0)}`}
-                  m2={2 * roofPanelsPerSide * panelW * panelH}
+                  size={`${fmt(panelW, 0)}×${fmt(result.roofPanelHeight)}`}
+                  m2={2 * roofPanelsPerSide * panelW * result.roofPanelHeight}
                 />
+                {customRoofEave && (
+                  <Row
+                    label="Roof eave cut"
+                    qty="2"
+                    size={`${fmt(panelW, 0)}×${fmt(customRoofEave.height)}`}
+                    m2={2 * panelW * customRoofEave.height}
+                    accent
+                  />
+                )}
                 <Row
                   label="Apex"
                   qty="1"
