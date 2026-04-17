@@ -61,10 +61,17 @@ export interface CalcResult {
   gableWallsM2: number;
   gableWallsPanels: number;
 
-  // gable triangles (custom)
+  // gable triangles (custom) — pieces per bay-slice
   gableTriM2: number;
-  gableTriCount: number;
-  gableTriSlices: Array<{ base: number; height: number }>;
+  gableTriCount: number; // triangle pieces total (both ends)
+  gableInfillCount: number; // custom infill pieces total (both ends)
+  gableInfillM2: number;
+  gableTriSlices: Array<{
+    base: number;
+    hInner: number;
+    hOuter: number;
+    pieces: GablePiece[];
+  }>;
 
   // totals
   totalM2: number;
