@@ -20,6 +20,10 @@ export interface CalcInput {
   roofOverhangEnabled: boolean;
   wallFloorSealEnabled: boolean;
   apexOverride?: number | null;
+  roofRaftersEnabled?: boolean;
+  legRaftersEnabled?: boolean;
+  rafterFlapWidth?: number;
+  roofRafterLength?: number;
   costPerM2?: number;
   weightPerM2?: number;
   /** Override panel width from pricing row. Falls back to LINING_TYPES default. */
