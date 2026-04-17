@@ -51,25 +51,137 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
   };
   const result = useMemo<CalcResult>(() => calculate(calcInput), [value, pricing]);
 
-  // Per-lining results for comparison tables
-  const allResults = useMemo(() => {
-    return LT.map((l) => {
-      const pr = pricingAll?.find((p) => p.lining_type === l.id);
-      const pw = pr?.panel_width != null ? Number(pr.panel_width) : l.panelW;
-      const ph = pr?.panel_height != null ? Number(pr.panel_height) : l.panelH;
-      const cost = pr?.cost_per_m2 != null ? Number(pr.cost_per_m2) : 0;
-      const weight = pr?.weight_per_m2 != null ? Number(pr.weight_per_m2) : l.weightPerM2;
-      const r = calculate({
-        ...value,
-        liningType: l.id,
-        panelW: pw,
-        panelH: ph,
-        costPerM2: cost,
-        weightPerM2: weight,
-      });
-      return { lining: l, panelW: pw, panelH: ph, cost, weight, result: r };
-    });
-  }, [value, pricingAll]);
+  const costPerM2 = pricing?.cost_per_m2 ?? 0;
+  const weightPerM2 = pricing?.weight_per_m2 ?? liningDef.weightPerM2 ?? 0;
+
+  const mkRow = (
+    component: string,
+    panels: number,
+    panelSize: string,
+    m2: number,
+    notes: string,
+    opts: { custom?: boolean; perBayLabel?: string } = {},
+  ): SectionRow => ({
+    component,
+    panels,
+    panelSize,
+    perBay: result.bays > 0 ? panels / result.bays : 0,
+    perBayLabel: opts.perBayLabel,
+    m2,
+    weight: m2 * weightPerM2,
+    cost: m2 * costPerM2,
+    notes,
+    custom: opts.custom,
+  });
+
+  // Roof rows
+  const roofRows: SectionRow[] = [
+    mkRow(
+      "Roof panels",
+      result.roofPanels,
+      `${fmt(panelW)}×${fmt(result.roofPanelHeight)} m${result.roofPanelHeight < panelH - 1e-3 ? " (cut)" : ""}`,
+      result.roofM2,
+      `${result.roofPanels / Math.max(1, result.bays * 2)} per side × ${result.bays} bays × 2 sides`,
+    ),
+  ];
+  if (result.apexPieces > 0) {
+    roofRows.push(
+      mkRow(
+        "Apex strips",
+        result.apexPieces,
+        `${fmt(result.apexWidth)}×${fmt(value.baySize)} m`,
+        result.apexM2,
+        "One per bay along the ridge",
+        { custom: true },
+      ),
+    );
+  }
+  if (result.customRoofEave) {
+    roofRows.push(
+      mkRow(
+        "Eave cuts",
+        result.customRoofEave.panelsCount,
+        `${fmt(panelW)}×${fmt(result.customRoofEave.height)} m`,
+        result.customRoofEave.m2,
+        "Absorbs slope leftover at eave",
+        { custom: true },
+      ),
+    );
+  }
+
+  // Wall rows
+  const wallRows: SectionRow[] = [
+    mkRow(
+      "Wall panels",
+      result.wallsPanels,
+      `${fmt(panelW)}×${fmt(result.wallPanelHeight)} m${result.wallPanelHeight < panelH - 1e-3 ? " (cut)" : ""}`,
+      result.wallsM2,
+      `${result.wallStacks} stack${result.wallStacks === 1 ? "" : "s"} × ${result.bays} bays × 2 sides`,
+    ),
+  ];
+  if (result.customWallInfill) {
+    wallRows.push(
+      mkRow(
+        "Wall infill",
+        result.customWallInfill.panelsCount,
+        `${fmt(panelW)}×${fmt(result.customWallInfill.height)} m`,
+        result.customWallInfill.m2,
+        "Custom infill above stacked panels",
+        { custom: true },
+      ),
+    );
+  }
+
+  // Gable rows
+  const gableTriOnlyM2 = result.gableTriM2 - result.gableInfillM2;
+  const gableRows: SectionRow[] = [
+    mkRow(
+      "Rectangular fill",
+      result.gableWallsPanels,
+      `${fmt(panelW)}×${fmt(panelH)} m`,
+      result.gableWallsM2,
+      `${result.gableWallsPanels / 2} per end × 2 ends`,
+      { perBayLabel: `${result.gableWallsPanels / 2} / end` },
+    ),
+  ];
+  if (result.gableTriCount > 0) {
+    gableRows.push(
+      mkRow(
+        "Triangles",
+        result.gableTriCount,
+        `≤ ${fmt(panelW)}×${fmt(panelH)} m`,
+        gableTriOnlyM2,
+        `${result.gableTriCount / 2} per end × 2 ends`,
+        { custom: true, perBayLabel: `${result.gableTriCount / 2} / end` },
+      ),
+    );
+  }
+  if (result.gableInfillCount > 0) {
+    gableRows.push(
+      mkRow(
+        "Triangle infills",
+        result.gableInfillCount,
+        `≤ ${fmt(panelW)}×${fmt(panelH)} m`,
+        result.gableInfillM2,
+        `${result.gableInfillCount / 2} per end × 2 ends`,
+        { custom: true, perBayLabel: `${result.gableInfillCount / 2} / end` },
+      ),
+    );
+  }
+
+  const rafterRows: SectionRow[] = [
+    {
+      component: "Rafter covers",
+      panels: null,
+      panelSize: "—",
+      perBay: null,
+      m2: null,
+      weight: null,
+      cost: null,
+      notes: "Coming soon",
+      muted: true,
+    },
+  ];
 
   return (
     <Tabs defaultValue="overview" className="space-y-6">
@@ -182,94 +294,25 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
             <SectionTable
               title="Roof"
               description="Full roof panels + apex strips + any custom eave cuts"
-              rows={allResults.map((ar) => {
-                const r = ar.result;
-                const panels = r.roofPanels + r.apexPieces + (r.customRoofEave?.panelsCount ?? 0);
-                const m2 = r.roofM2 + r.apexM2 + (r.customRoofEave?.m2 ?? 0);
-                const parts: string[] = [`${r.roofPanels} full`];
-                if (r.apexPieces > 0) parts.push(`${r.apexPieces} apex`);
-                if (r.customRoofEave) parts.push(`${r.customRoofEave.panelsCount} eave cut`);
-                const cutNote = r.roofPanelHeight < ar.panelH - 1e-3
-                  ? ` (cut to ${fmt(r.roofPanelHeight)}m)`
-                  : "";
-                return {
-                  liningId: ar.lining.id,
-                  panels,
-                  panelSize: `${fmt(ar.panelW)}×${fmt(ar.panelH)} m${cutNote}`,
-                  perBay: r.bays > 0 ? panels / r.bays : 0,
-                  m2,
-                  weight: m2 * (ar.weight || 0),
-                  cost: m2 * (ar.cost || 0),
-                  notes: parts.join(" + "),
-                };
-              })}
-              selectedId={value.liningType}
+              rows={roofRows}
             />
 
             <SectionTable
               title="Walls"
               description="Long-side walls (both sides) including any custom infill"
-              rows={allResults.map((ar) => {
-                const r = ar.result;
-                const panels = r.wallsPanels + (r.customWallInfill?.panelsCount ?? 0);
-                const m2 = r.wallsM2 + (r.customWallInfill?.m2 ?? 0);
-                const cutNote = r.wallPanelHeight < ar.panelH - 1e-3
-                  ? ` (cut to ${fmt(r.wallPanelHeight)}m)`
-                  : "";
-                return {
-                  liningId: ar.lining.id,
-                  panels,
-                  panelSize: `${fmt(ar.panelW)}×${fmt(ar.panelH)} m${cutNote}`,
-                  perBay: r.bays > 0 ? panels / r.bays : 0,
-                  m2,
-                  weight: m2 * (ar.weight || 0),
-                  cost: m2 * (ar.cost || 0),
-                  notes: r.customWallInfill
-                    ? `${r.wallsPanels} full + ${r.customWallInfill.panelsCount} infill (${fmt(r.customWallInfill.height)}m)`
-                    : `${r.wallStacks} stack${r.wallStacks === 1 ? "" : "s"} × ${r.bays} bays × 2 sides`,
-                };
-              })}
-              selectedId={value.liningType}
+              rows={wallRows}
             />
 
             <SectionTable
               title="Gables"
               description="Both gable ends — rectangular fill + custom triangles + infills"
-              rows={allResults.map((ar) => {
-                const r = ar.result;
-                const panels = r.gableWallsPanels + r.gableTriCount + r.gableInfillCount;
-                const m2 = r.gableWallsM2 + r.gableTriM2;
-                const piecesPerEnd = panels / 2;
-                return {
-                  liningId: ar.lining.id,
-                  panels,
-                  panelSize: `${fmt(ar.panelW)}×${fmt(ar.panelH)} m`,
-                  perBay: piecesPerEnd,
-                  perBayLabel: `${fmt(piecesPerEnd, 0)} / end`,
-                  m2,
-                  weight: m2 * (ar.weight || 0),
-                  cost: m2 * (ar.cost || 0),
-                  notes: `${r.gableWallsPanels} wall + ${r.gableTriCount} tri + ${r.gableInfillCount} infill`,
-                };
-              })}
-              selectedId={value.liningType}
+              rows={gableRows}
             />
 
             <SectionTable
               title="Rafter covers"
               description="Coming soon — covers along each roof rafter"
-              rows={allResults.map((ar) => ({
-                liningId: ar.lining.id,
-                panels: null,
-                panelSize: "—",
-                perBay: null,
-                m2: null,
-                weight: null,
-                cost: null,
-                notes: "Coming soon",
-                muted: true,
-              }))}
-              selectedId={value.liningType}
+              rows={rafterRows}
             />
 
             <Card>
@@ -363,7 +406,7 @@ function Stat({ label, value, unit, highlight }: { label: string; value: string;
 }
 
 interface SectionRow {
-  liningId: string;
+  component: string;
   panels: number | null;
   panelSize: string;
   perBay: number | null;
@@ -373,19 +416,29 @@ interface SectionRow {
   cost: number | null;
   notes: string;
   muted?: boolean;
+  custom?: boolean;
 }
 
 function SectionTable({
   title,
   description,
   rows,
-  selectedId,
 }: {
   title: string;
   description?: string;
   rows: SectionRow[];
-  selectedId: string;
 }) {
+  const totals = rows.reduce(
+    (acc, r) => ({
+      panels: acc.panels + (r.panels ?? 0),
+      m2: acc.m2 + (r.m2 ?? 0),
+      weight: acc.weight + (r.weight ?? 0),
+      cost: acc.cost + (r.cost ?? 0),
+      hasValues: acc.hasValues || r.panels != null,
+    }),
+    { panels: 0, m2: 0, weight: 0, cost: 0, hasValues: false },
+  );
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -398,7 +451,7 @@ function SectionTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
-              <TableHead className="pl-4">Lining</TableHead>
+              <TableHead className="pl-4">Component</TableHead>
               <TableHead className="text-right">Panels</TableHead>
               <TableHead>Panel size</TableHead>
               <TableHead className="text-right">Per bay</TableHead>
@@ -409,45 +462,51 @@ function SectionTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((r) => {
-              const selected = r.liningId === selectedId;
-              return (
-                <TableRow
-                  key={r.liningId}
-                  className={selected ? "bg-primary/5 hover:bg-primary/10" : ""}
-                >
-                  <TableCell className="pl-4">
-                    <div className="flex items-center gap-2">
-                      <span className={selected ? "font-medium" : ""}>{r.liningId}</span>
-                      {selected && (
-                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-                          Selected
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.panels ?? "—"}
-                  </TableCell>
-                  <TableCell className={`tabular-nums text-xs ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.panelSize}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.perBayLabel ?? (r.perBay != null ? fmt(r.perBay, 1) : "—")}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.m2 != null ? fmt(r.m2) : "—"}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.weight != null ? fmt(r.weight, 1) : "—"}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.cost != null ? fmt(r.cost) : "—"}
-                  </TableCell>
-                  <TableCell className="pr-4 text-xs text-muted-foreground">{r.notes}</TableCell>
-                </TableRow>
-              );
-            })}
+            {rows.map((r) => (
+              <TableRow key={r.component}>
+                <TableCell className="pl-4">
+                  <div className="flex items-center gap-2">
+                    <span className={r.muted ? "text-muted-foreground" : "font-medium"}>{r.component}</span>
+                    {r.custom && (
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                        Custom
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.panels ?? "—"}
+                </TableCell>
+                <TableCell className={`tabular-nums text-xs ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.panelSize}
+                </TableCell>
+                <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.perBayLabel ?? (r.perBay != null ? fmt(r.perBay, 1) : "—")}
+                </TableCell>
+                <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.m2 != null ? fmt(r.m2) : "—"}
+                </TableCell>
+                <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.weight != null ? fmt(r.weight, 1) : "—"}
+                </TableCell>
+                <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.cost != null ? fmt(r.cost) : "—"}
+                </TableCell>
+                <TableCell className="pr-4 text-xs text-muted-foreground">{r.notes}</TableCell>
+              </TableRow>
+            ))}
+            {totals.hasValues && rows.length > 1 && (
+              <TableRow className="bg-muted/30 font-semibold">
+                <TableCell className="pl-4">Totals</TableCell>
+                <TableCell className="text-right tabular-nums">{totals.panels}</TableCell>
+                <TableCell />
+                <TableCell />
+                <TableCell className="text-right tabular-nums">{fmt(totals.m2)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmt(totals.weight, 1)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmt(totals.cost)}</TableCell>
+                <TableCell className="pr-4" />
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
