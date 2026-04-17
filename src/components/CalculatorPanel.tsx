@@ -169,8 +169,47 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
     );
   }
 
-  const rafterRows: SectionRow[] = [
-    {
+  const rafterRows: SectionRow[] = [];
+  if (result.roofRafterCovers) {
+    const rc = result.roofRafterCovers;
+    if (rc.fullPanels > 0) {
+      rafterRows.push(
+        mkRow(
+          "Roof rafter covers (full)",
+          rc.fullPanels,
+          `${fmt(rc.flapLength)}×${fmt(value.rafterFlapWidth ?? 0.4)} m`,
+          rc.fullPanels * rc.flapLength * (value.rafterFlapWidth ?? 0.4),
+          `${rc.flapsPerRafter} flap${rc.flapsPerRafter === 1 ? "" : "s"} per rafter × ${rc.countRafters} rafters · 150mm overlaps`,
+        ),
+      );
+    }
+    if (rc.customLastFlap != null && rc.customPanels > 0) {
+      rafterRows.push(
+        mkRow(
+          "Roof rafter covers (custom length)",
+          rc.customPanels,
+          `${fmt(rc.customLastFlap)}×${fmt(value.rafterFlapWidth ?? 0.4)} m`,
+          rc.customPanels * rc.customLastFlap * (value.rafterFlapWidth ?? 0.4),
+          "Last flap per rafter, cut to fit",
+          { custom: true },
+        ),
+      );
+    }
+  }
+  if (result.legRafterCovers) {
+    const lc = result.legRafterCovers;
+    rafterRows.push(
+      mkRow(
+        "Leg rafter covers",
+        lc.count,
+        `${fmt(lc.legLength)}×${fmt(value.rafterFlapWidth ?? 0.4)} m`,
+        lc.m2,
+        "One per leg rafter · 150mm overlap onto roof at eave",
+      ),
+    );
+  }
+  if (rafterRows.length === 0) {
+    rafterRows.push({
       component: "Rafter covers",
       panels: null,
       panelSize: "—",
@@ -178,10 +217,10 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
       m2: null,
       weight: null,
       cost: null,
-      notes: "Coming soon",
+      notes: "Enable in spec to include",
       muted: true,
-    },
-  ];
+    });
+  }
 
   return (
     <Tabs defaultValue="overview" className="space-y-6">
@@ -247,6 +286,40 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
                   checked={value.wallFloorSealEnabled}
                   onChange={(v) => set("wallFloorSealEnabled", v)}
                 />
+                <ToggleRow
+                  label="Roof rafter covers"
+                  checked={!!value.roofRaftersEnabled}
+                  onChange={(v) => set("roofRaftersEnabled", v)}
+                />
+                <ToggleRow
+                  label="Leg rafter covers"
+                  checked={!!value.legRaftersEnabled}
+                  onChange={(v) => set("legRaftersEnabled", v)}
+                />
+                {(value.roofRaftersEnabled || value.legRaftersEnabled) && (
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <Field label="Flap width (mm)">
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        step="10"
+                        value={Math.round((value.rafterFlapWidth ?? 0.4) * 1000)}
+                        onChange={(e) => set("rafterFlapWidth", num(e.target.value) / 1000)}
+                      />
+                    </Field>
+                    {value.roofRaftersEnabled && (
+                      <Field label="Roof rafter length (m)">
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          step="0.5"
+                          value={value.roofRafterLength ?? 10}
+                          onChange={(e) => set("roofRafterLength", num(e.target.value))}
+                        />
+                      </Field>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -311,7 +384,7 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
 
             <SectionTable
               title="Rafter covers"
-              description="Coming soon — covers along each roof rafter"
+              description="Fabric flaps along roof and leg rafters with 150mm overlaps"
               rows={rafterRows}
             />
 
