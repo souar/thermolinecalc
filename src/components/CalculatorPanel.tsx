@@ -169,8 +169,47 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
     );
   }
 
-  const rafterRows: SectionRow[] = [
-    {
+  const rafterRows: SectionRow[] = [];
+  if (result.roofRafterCovers) {
+    const rc = result.roofRafterCovers;
+    if (rc.fullPanels > 0) {
+      rafterRows.push(
+        mkRow(
+          "Roof rafter covers (full)",
+          rc.fullPanels,
+          `${fmt(rc.flapLength)}×${fmt(value.rafterFlapWidth ?? 0.4)} m`,
+          rc.fullPanels * rc.flapLength * (value.rafterFlapWidth ?? 0.4),
+          `${rc.flapsPerRafter} flap${rc.flapsPerRafter === 1 ? "" : "s"} per rafter × ${rc.countRafters} rafters · 150mm overlaps`,
+        ),
+      );
+    }
+    if (rc.customLastFlap != null && rc.customPanels > 0) {
+      rafterRows.push(
+        mkRow(
+          "Roof rafter covers (custom length)",
+          rc.customPanels,
+          `${fmt(rc.customLastFlap)}×${fmt(value.rafterFlapWidth ?? 0.4)} m`,
+          rc.customPanels * rc.customLastFlap * (value.rafterFlapWidth ?? 0.4),
+          "Last flap per rafter, cut to fit",
+          { custom: true },
+        ),
+      );
+    }
+  }
+  if (result.legRafterCovers) {
+    const lc = result.legRafterCovers;
+    rafterRows.push(
+      mkRow(
+        "Leg rafter covers",
+        lc.count,
+        `${fmt(lc.legLength)}×${fmt(value.rafterFlapWidth ?? 0.4)} m`,
+        lc.m2,
+        "One per leg rafter · 150mm overlap onto roof at eave",
+      ),
+    );
+  }
+  if (rafterRows.length === 0) {
+    rafterRows.push({
       component: "Rafter covers",
       panels: null,
       panelSize: "—",
@@ -178,10 +217,10 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
       m2: null,
       weight: null,
       cost: null,
-      notes: "Coming soon",
+      notes: "Enable in spec to include",
       muted: true,
-    },
-  ];
+    });
+  }
 
   return (
     <Tabs defaultValue="overview" className="space-y-6">
