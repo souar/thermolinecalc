@@ -157,6 +157,7 @@ function JobPage() {
               }
             : null
         }
+        pricingAll={pricingQ.data ?? []}
       />
 
       {revisions.length > 0 && (
