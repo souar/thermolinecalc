@@ -183,7 +183,7 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
             title="Gable triangles"
             m2={result.gableTriM2}
             panels={result.gableTriCount}
-            sub={`custom triangles, max ${value.baySize}m wide`}
+            sub={`right-angle triangles, base = ${fmt(value.baySize, 0)}m bay`}
             accent
             customCut
           />
