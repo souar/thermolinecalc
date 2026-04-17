@@ -406,7 +406,7 @@ function Stat({ label, value, unit, highlight }: { label: string; value: string;
 }
 
 interface SectionRow {
-  liningId: string;
+  component: string;
   panels: number | null;
   panelSize: string;
   perBay: number | null;
@@ -416,19 +416,29 @@ interface SectionRow {
   cost: number | null;
   notes: string;
   muted?: boolean;
+  custom?: boolean;
 }
 
 function SectionTable({
   title,
   description,
   rows,
-  selectedId,
 }: {
   title: string;
   description?: string;
   rows: SectionRow[];
-  selectedId: string;
 }) {
+  const totals = rows.reduce(
+    (acc, r) => ({
+      panels: acc.panels + (r.panels ?? 0),
+      m2: acc.m2 + (r.m2 ?? 0),
+      weight: acc.weight + (r.weight ?? 0),
+      cost: acc.cost + (r.cost ?? 0),
+      hasValues: acc.hasValues || r.panels != null,
+    }),
+    { panels: 0, m2: 0, weight: 0, cost: 0, hasValues: false },
+  );
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -441,7 +451,7 @@ function SectionTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
-              <TableHead className="pl-4">Lining</TableHead>
+              <TableHead className="pl-4">Component</TableHead>
               <TableHead className="text-right">Panels</TableHead>
               <TableHead>Panel size</TableHead>
               <TableHead className="text-right">Per bay</TableHead>
@@ -452,45 +462,51 @@ function SectionTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((r) => {
-              const selected = r.liningId === selectedId;
-              return (
-                <TableRow
-                  key={r.liningId}
-                  className={selected ? "bg-primary/5 hover:bg-primary/10" : ""}
-                >
-                  <TableCell className="pl-4">
-                    <div className="flex items-center gap-2">
-                      <span className={selected ? "font-medium" : ""}>{r.liningId}</span>
-                      {selected && (
-                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-                          Selected
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.panels ?? "—"}
-                  </TableCell>
-                  <TableCell className={`tabular-nums text-xs ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.panelSize}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.perBayLabel ?? (r.perBay != null ? fmt(r.perBay, 1) : "—")}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.m2 != null ? fmt(r.m2) : "—"}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.weight != null ? fmt(r.weight, 1) : "—"}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
-                    {r.cost != null ? fmt(r.cost) : "—"}
-                  </TableCell>
-                  <TableCell className="pr-4 text-xs text-muted-foreground">{r.notes}</TableCell>
-                </TableRow>
-              );
-            })}
+            {rows.map((r) => (
+              <TableRow key={r.component}>
+                <TableCell className="pl-4">
+                  <div className="flex items-center gap-2">
+                    <span className={r.muted ? "text-muted-foreground" : "font-medium"}>{r.component}</span>
+                    {r.custom && (
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                        Custom
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.panels ?? "—"}
+                </TableCell>
+                <TableCell className={`tabular-nums text-xs ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.panelSize}
+                </TableCell>
+                <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.perBayLabel ?? (r.perBay != null ? fmt(r.perBay, 1) : "—")}
+                </TableCell>
+                <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.m2 != null ? fmt(r.m2) : "—"}
+                </TableCell>
+                <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.weight != null ? fmt(r.weight, 1) : "—"}
+                </TableCell>
+                <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                  {r.cost != null ? fmt(r.cost) : "—"}
+                </TableCell>
+                <TableCell className="pr-4 text-xs text-muted-foreground">{r.notes}</TableCell>
+              </TableRow>
+            ))}
+            {totals.hasValues && rows.length > 1 && (
+              <TableRow className="bg-muted/30 font-semibold">
+                <TableCell className="pl-4">Totals</TableCell>
+                <TableCell className="text-right tabular-nums">{totals.panels}</TableCell>
+                <TableCell />
+                <TableCell />
+                <TableCell className="text-right tabular-nums">{fmt(totals.m2)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmt(totals.weight, 1)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmt(totals.cost)}</TableCell>
+                <TableCell className="pr-4" />
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
