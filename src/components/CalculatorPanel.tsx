@@ -87,7 +87,7 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
   if (result.apexPieces > 0) {
     roofRows.push(
       mkRow(
-        "Apex strips",
+        "Apex Infill",
         result.apexPieces,
         `${fmt(result.apexWidth)}×${fmt(value.baySize)} m`,
         result.apexM2,
@@ -99,7 +99,7 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
   if (result.customRoofEave) {
     roofRows.push(
       mkRow(
-        "Eave cuts",
+        "Eave Infill",
         result.customRoofEave.panelsCount,
         `${fmt(panelW)}×${fmt(result.customRoofEave.height)} m`,
         result.customRoofEave.m2,
