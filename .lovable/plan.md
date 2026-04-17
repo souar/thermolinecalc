@@ -1,49 +1,98 @@
 
-## Diagnosis: panel counts ARE updating — math just produces identical numbers for this config
+## Fix: short walls/roofs should count as 1 cut panel, not 0
 
-I traced the calculation and database against your two screenshots (MAL18 vs MAL30, 50×30, eave 5m, pitch 18°). The calculator is wiring panel sizes correctly from `lining_pricing` and recomputing on every lining-type change. The reason it *looks* like nothing updates is that for this specific marquee, several sections coincidentally land on the same panel count.
+### The bug
+When `wallHeight < panelH`, `Math.floor(3.25/5) = 0` → 0 wall panels, and the entire wall gets dumped into "custom infill." Same flaw applies to the roof slope when `slopeLength < panelH`.
 
-### Verification against your screenshots
+Your rule: **if a section's dimension is less than a panel's max size, it still consumes one panel (cut to fit) — not custom infill.** Custom infill is only for the *leftover* on top of full stacks when the section is taller than at least one full panel.
 
-DB panel sizes (confirmed via query):
-- MAL18 / Thermoline → 5 × 5 m
-- MAL30 / ThermoAcoustic → **5 × 3 m** (wide & short, not 3 × 5)
+### Fix in `src/lib/calculator.ts`
 
-| Section | MAL18 (5×5) | MAL30 (5×3) | Why |
-|---|---|---|---|
-| Walls | 20 panels, 500 m² | 20 panels, 300 m² | wallHeight 5.25 ÷ panelH: floor(5.25/5)=1 stack, floor(5.25/3)=1 stack → same count, different area |
-| Custom infill | 20 @ 0.25m, 25 m² | 20 @ 2.25m, 225 m² | leftover height differs, count is same (bays×2) |
-| Roof | 60, 1,500 m² | 100, 1,500 m² | 60×25 = 100×15 = 1,500 — pure coincidence |
-| Apex | 10, 127.19 m² | 10, 127.19 m² | apex width converges to 2.54m for both (geometry-driven, panel-independent) |
-| Gable walls | 12, 300 m² | 12, 180 m² | ceil(30/5)=6 cols × 1 row × 2 ends = 12 in both (panelW=5 in both DBs) |
-| Gable triangles | 12, 146.21 m² | 12, 146.21 m² | slice count driven by `width / baySize`, area is geometric — neither depends on panel size |
+**Walls (lines 158–177):**
+Replace the `floor + leftover` logic with: if `wallHeight ≤ panelH`, count 1 panel per stack position (cut to `wallHeight` tall, billed as a full panel — same model as apex/gable triangles which already bill `panelW × actualHeight`). Only treat as custom infill when there are full stacks AND a leftover above them.
 
-So: **walls, infill, gable walls all DID update m² correctly. Roof m² is identical by arithmetic accident. Apex and gable triangles are intentionally panel-independent (geometry-driven custom cuts).**
+```ts
+const wallHeight = eaveHeight + (wallFloorSealEnabled ? FLOOR_SEAL : 0);
+let wallStacks: number;
+let wallsPanels: number;
+let wallsM2: number;
+let customWallInfill: CustomInfill | null = null;
 
-### The real "issues" to fix
+if (wallHeight <= panelH + 1e-6) {
+  // Single cut panel per bay-side (wall fits within one panel height)
+  wallStacks = 1;
+  wallsPanels = bays * 2;
+  wallsM2 = wallsPanels * panelW * wallHeight; // billed at actual cut size
+} else {
+  const fullStacks = Math.floor(wallHeight / panelH);
+  const leftover = wallHeight - fullStacks * panelH;
+  wallStacks = fullStacks;
+  wallsPanels = bays * 2 * fullStacks;
+  wallsM2 = wallsPanels * panelArea;
+  if (leftover > 1e-6) {
+    const infillCount = bays * 2;
+    customWallInfill = {
+      height: leftover,
+      panelsCount: infillCount,
+      m2: infillCount * panelW * leftover,
+    };
+    warnings.push(`Wall height ${wallHeight.toFixed(2)}m exceeds ${fullStacks} × ${panelH}m — added ${infillCount} custom infill panels at ${leftover.toFixed(2)}m tall.`);
+  }
+}
+```
 
-1. **Apex panel count is hardcoded to `bays` (one strip per bay).** It never reflects how many physical panels the apex strip consumes. If apex width 2.54m comes from a 5m or 3m panel, that's still one panel cut per bay — but if apex exceeded panel width it would need multiple. Current behaviour matches the spec rule "apex ≤ max panel size", so count = bays is correct. No change needed unless you want it shown as "from X panels of stock".
+**Roof (lines 121–149):**
+Apply same rule — if `effectiveSlope ≤ panelH`, that's 1 cut panel per side per bay (billed at `panelW × effectiveSlope`), and apex covers any remainder via existing geometric logic. Currently `wholeAlongSlope = floor(slope/panelH)` returns 0 for short roofs and the entire slope becomes apex (which then trips the apexMax cap).
 
-2. **Gable triangles count (12) is independent of lining type by design** (slice count = `ceil(width/baySize)` rounded to even, ×2 ends). This is correct per spec — triangles are custom-cut. No fix.
+```ts
+let roofPanelsPerSide: number;
+let roofM2PerPanel: number; // area billed per panel
+let apexAuto: number;
 
-3. **Roof m² coincidence (1,500 = 1,500) is not a bug** — different panel counts × different areas multiply to the same total. This will diverge for any other marquee size.
+if (effectiveSlope <= panelH + 1e-6) {
+  roofPanelsPerSide = 1;
+  roofM2PerPanel = panelW * effectiveSlope; // cut panel
+  apexAuto = 0; // panel covers full slope incl. overhang
+} else {
+  const wholeAlongSlope = Math.floor(effectiveSlope / panelH);
+  const geometricApex = Math.max(0, (effectiveSlope - wholeAlongSlope * panelH) * 2);
+  roofPanelsPerSide = wholeAlongSlope;
+  roofM2PerPanel = panelArea;
+  apexAuto = geometricApex + 2 * overlapExcess;
+  // existing apexMax loop to drop a row if needed
+  while (apexAuto > apexMax && roofPanelsPerSide > 0) {
+    roofPanelsPerSide -= 1;
+    const newGeo = Math.max(0, (effectiveSlope - roofPanelsPerSide * panelH) * 2);
+    apexAuto = newGeo + 2 * overlapExcess;
+  }
+}
 
-### Proposed plan: improve visibility of what's panel-dependent
+const roofPanels = roofPanelsPerSide * 2 * bays;
+const roofM2 = roofPanels * roofM2PerPanel;
+```
 
-Since the math is right but the UX is misleading, I propose **two small UX changes** so users immediately see *why* numbers do or don't change between linings:
+**Gable walls (line 180):**
+Already protected by `Math.max(1, fullStacks)`, but currently bills at full `panelArea` even when wall is short. Fix to bill cut height when `wallHeight ≤ panelH`:
 
-**A. Show panel size next to each section's panel count.**
-In `AreaCard`, when a section uses full panels, append the panel size to the `sub` text:
-- Walls sub: `1 stack × 10 bays × 2 sides · 5×3m panels`
-- Roof sub: `full panels only · 5×3m panels`
-- Gable walls sub: `rectangular fill, both ends · 5×3m panels`
+```ts
+const gableRowHeight = wallHeight <= panelH + 1e-6 ? wallHeight : panelH * Math.max(1, fullStacks);
+const gableWallsPanelsPerEnd = Math.ceil(width / panelW) * Math.max(1, fullStacks || 1);
+const gableWallsPanels = gableWallsPanelsPerEnd * 2;
+const gableWallsM2 = gableWallsPanels * panelW * gableRowHeight / Math.max(1, fullStacks || 1);
+// (or simpler: bill per-panel area = panelW × min(panelH, wallHeight))
+```
 
-This makes it obvious that swapping linings changed the panel size (and therefore m²) even when count happens to match.
+Simpler restatement:
+```ts
+const gablePerPanelArea = panelW * Math.min(panelH, wallHeight);
+const gableWallsM2 = gableWallsPanels * gablePerPanelArea;
+```
 
-**B. Mark custom-cut sections explicitly.**
-Apex and Gable triangles cards already say "custom triangles" / show apex dimensions, but add a small `Custom cut` badge so users understand those counts are geometry-driven, not panel-grid driven.
+### Expected result for the screenshot config (3m eave, MAL18 5×5)
+- Walls: **20 panels** (10 bays × 2 sides), 195 m² (cut at 3.25m tall × 5m wide)
+- Custom infill: **none** (no warning)
+- Roof: 60 panels at full 5×5 (slope ≈15.77m → still 3 stacks, unchanged)
+- Gable walls: 12 panels at 5×3.25 = 195 m² (was 300 m² at full 5×5)
 
 ### Files
-- `src/components/CalculatorPanel.tsx` — extend `AreaCard` to accept panel size info; add `Custom cut` badge for apex / gable triangles; pass `panelW`/`panelH` strings into the relevant `sub` lines.
-
-No changes to `calculator.ts` — calculations are correct.
+- `src/lib/calculator.ts` — wall, roof, and gable-wall sizing logic. No UI changes needed; `AreaCard` already handles whatever `panels`/`m2` values come back.
