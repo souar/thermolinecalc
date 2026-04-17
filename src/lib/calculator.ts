@@ -123,13 +123,25 @@ export function calculate(input: CalcInput): CalcResult {
   // exceeds that cap, drop one roof panel row per side — the freed slope
   // length flows into the apex strip instead.
   const apexMax = Math.max(panelW, panelH);
-  let apexAuto = geometricApex + 2 * overlapExcess;
-  let roofPanelsPerSide = wholeAlongSlope;
+  let apexAuto: number;
+  let roofPanelsPerSide: number;
+  let roofM2PerPanel: number;
 
-  while (apexAuto > apexMax && roofPanelsPerSide > 0) {
-    roofPanelsPerSide -= 1;
-    const newGeo = Math.max(0, (effectiveSlope - roofPanelsPerSide * panelH) * 2);
-    apexAuto = newGeo + 2 * overlapExcess;
+  if (effectiveSlope <= panelH + 1e-6) {
+    // Slope fits within a single panel — one cut panel per side per bay
+    roofPanelsPerSide = 1;
+    roofM2PerPanel = panelW * effectiveSlope;
+    apexAuto = 0;
+  } else {
+    roofPanelsPerSide = wholeAlongSlope;
+    roofM2PerPanel = panelArea;
+    apexAuto = geometricApex + 2 * overlapExcess;
+
+    while (apexAuto > apexMax && roofPanelsPerSide > 0) {
+      roofPanelsPerSide -= 1;
+      const newGeo = Math.max(0, (effectiveSlope - roofPanelsPerSide * panelH) * 2);
+      apexAuto = newGeo + 2 * overlapExcess;
+    }
   }
 
   if (apexAuto > apexMax) {
