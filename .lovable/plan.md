@@ -1,36 +1,76 @@
 
-## Restructure Overview tables: rows = sub-pieces of selected lining
 
-Replace per-lining-comparison tables with per-sub-piece tables for the **currently selected** lining only. Tables update dynamically when the user changes the lining type in the spec.
+## Add Rafter Covers calculation
 
-### New table structure
-Same columns as before, minus the "Lining" column (since it's a single lining throughout):
-| Component | Panels | Panel size | Per bay | m² | Weight (kg) | Cost | Notes |
+### Spec section toggles
+Add two switches in the spec card under existing seal/overhang toggles:
+- **Roof rafter covers** (on/off)
+- **Leg rafter covers** (on/off)
+- **Rafter flap width** number input (default 400mm, editable, shown when either toggle is on)
+- **Roof rafter length** number input (default 10m, editable per rule 3, shown when roof rafters on)
 
-### Section row breakdowns (selected lining only)
-1. **Roof**
-   - Roof panels (full) — `roofPanels`, `panelW × roofPanelHeight`, `roofM2`
-   - Apex strips — `apexPieces`, `apexWidth × baySize`, `apexM2` (only if > 0)
-   - Custom eave cuts — from `customRoofEave` (only if present)
-2. **Walls**
-   - Wall panels — `wallsPanels`, `panelW × wallPanelHeight`, `wallsM2`
-   - Custom infill — from `customWallInfill` (only if present)
-3. **Gables**
-   - Rectangular wall fill — `gableWallsPanels`, `gableWallsM2`
-   - Triangles (custom) — `gableTriCount`, area = `gableTriM2 - gableInfillM2`
-   - Infills (custom) — `gableInfillCount`, `gableInfillM2`
-4. **Rafter covers** — single placeholder row "Coming soon"
+### Calculation logic (`src/lib/calculator.ts`)
 
-Each section gets a bold **Totals** footer row (sum of its sub-pieces).
+Add to `CalcInput`:
+```ts
+roofRaftersEnabled: boolean;
+legRaftersEnabled: boolean;
+rafterFlapWidth?: number;   // m, default 0.4
+roofRafterLength?: number;  // m, default 10
+```
+
+Add constants: `RAFTER_FLAP_DEFAULT = 0.4`, `RAFTER_LENGTH_DEFAULT = 10`, `RAFTER_OVERLAP = 0.15`.
+
+**Rafter count**: One rafter per bay junction = `bays + 1` rafters per side. Roof has 2 sides, legs have 2 sides → `(bays + 1) × 2` of each.
+
+**Roof rafter cover** (per rafter):
+- Required cover length = `slopeLength + RAFTER_OVERLAP` (eave overlap to leg, rule 5)
+- Number of flaps along length = `ceil((coverLength - overlap) / (rafterLength - overlap))` accounting for 150mm joins (rule 6)
+- Effective fabric length per flap = user-set rafterLength (or shorter custom for last piece if it'd be wasteful — surface as "custom length" row)
+- Area per flap = `flapWidth × rafterLength`
+
+**Leg rafter cover** (per rafter):
+- Length = `eaveHeight + RAFTER_OVERLAP` (overlap onto roof rafter at eave, rule 5)
+- One flap per leg rafter (legs typically single piece, rule 4)
+- Area = `flapWidth × legLength`
+
+Add to `CalcResult`:
+```ts
+roofRafterCovers: { count: number; flapsPerRafter: number; flapLength: number; customLastFlap: number | null; m2: number; panels: number } | null;
+legRafterCovers:  { count: number; legLength: number; m2: number; panels: number } | null;
+```
+
+Include their `m2` and `panels` in `totalM2` / `totalPanels` (and weight/cost).
+
+### UI updates (`src/components/CalculatorPanel.tsx`)
+
+**Spec card**: Add the two switches + two conditional number inputs (flap width in mm, rafter length in m).
+
+**Rafter covers section table**: Replace placeholder rows with real rows when toggles enabled:
+- "Roof rafter covers (full)" — count of full-length flaps
+- "Roof rafter covers (custom length)" — only if last flap is shorter than default (custom badge)
+- "Leg rafter covers" — one row, count = `(bays + 1) × 2`
+- Conditional rows; if both toggles off, keep "Coming soon" placeholder.
+
+Notes column shows things like "10m × 0.4m", "150mm overlap at joins", "Spans eave to leg".
+
+### Diagram updates
+Out of scope this round — rafter covers are linear strips along structural rafters and don't affect the bay/gable diagrams meaningfully. Can add overlay lines later if wanted.
+
+### Default values for `DEFAULT_INPUT`
+```ts
+roofRaftersEnabled: false,
+legRaftersEnabled: false,
+rafterFlapWidth: 0.4,
+roofRafterLength: 10,
+```
 
 ### Files to change
-- **`src/components/CalculatorPanel.tsx`**:
-  - Remove `allResults` useMemo (no longer needed for tables; selected `result` already exists).
-  - Update `SectionRow` type: rename `liningId` → `component` (string label), drop `selectedId` prop, drop selection highlighting.
-  - Rebuild the four `SectionTable` calls to emit one row per sub-piece using `result` (selected lining), conditionally including apex/eave/infill rows when their counts > 0.
-  - Add a totals footer row to `SectionTable` (computed from rows).
-  - "Custom" badge on bespoke piece rows (apex, eave cut, wall infill, gable triangles, gable infills).
-- **`src/routes/calculator.tsx`** & **`src/routes/jobs.$jobId.tsx`**: no changes needed (already pass `pricingAll` which is harmless; selected `pricing` drives the now-single result).
+- `src/lib/calculator.ts` — input/result types, calculation, defaults
+- `src/components/CalculatorPanel.tsx` — spec switches/inputs, rafter section rows
 
 ### Out of scope
-- Cross-lining comparison view (removed by this change; can be re-added later behind a toggle if wanted).
+- Pricing differentiation for rafter covers (uses selected lining's cost/weight per m²)
+- Visual diagrams of rafter cover layout
+- Saving rafter toggle state per job (will inherit from existing job persistence path automatically)
+
