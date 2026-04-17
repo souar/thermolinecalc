@@ -64,6 +64,7 @@ export interface CalcResult {
   // gable triangles (custom)
   gableTriM2: number;
   gableTriCount: number;
+  gableTriSlices: Array<{ base: number; height: number }>;
 
   // totals
   totalM2: number;
