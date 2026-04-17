@@ -145,7 +145,7 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
             title="Walls"
             m2={result.wallsM2}
             panels={result.wallsPanels}
-            sub={`${result.wallStacks} stack${result.wallStacks === 1 ? "" : "s"} × ${result.bays} bays × 2 sides · ${fmt(panelW)}×${fmt(panelH)}m panels`}
+            sub={`${result.wallStacks} stack${result.wallStacks === 1 ? "" : "s"} × ${result.bays} bays × 2 sides · ${fmt(panelW)}×${fmt(result.wallPanelHeight)}m panels`}
           />
           {result.customWallInfill ? (
             <AreaCard
@@ -163,8 +163,20 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
             title="Roof"
             m2={result.roofM2}
             panels={result.roofPanels}
-            sub={`full panels only · ${fmt(panelW)}×${fmt(panelH)}m panels`}
+            sub={`full panels · ${fmt(panelW)}×${fmt(result.roofPanelHeight)}m`}
           />
+          {result.customRoofEave ? (
+            <AreaCard
+              title="Custom roof eave"
+              m2={result.customRoofEave.m2}
+              panels={result.customRoofEave.panelsCount}
+              sub={`${fmt(panelW)}×${fmt(result.customRoofEave.height)}m cut at eave to keep apex ≤ panel max`}
+              accent
+              customCut
+            />
+          ) : (
+            <EmptyCard title="Custom roof eave" sub="Not needed — apex fits in one panel" />
+          )}
           <AreaCard
             title="Apex"
             m2={result.apexM2}
