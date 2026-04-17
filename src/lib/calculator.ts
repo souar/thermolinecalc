@@ -34,6 +34,10 @@ export interface CustomInfill {
   m2: number;
 }
 
+export type GablePiece =
+  | { kind: "triangle"; base: number; height: number; m2: number; weight: number }
+  | { kind: "infill"; base: number; height: number; m2: number; weight: number };
+
 export interface CalcResult {
   // geometry
   slopeLength: number;
@@ -61,10 +65,17 @@ export interface CalcResult {
   gableWallsM2: number;
   gableWallsPanels: number;
 
-  // gable triangles (custom)
+  // gable triangles (custom) — pieces per bay-slice
   gableTriM2: number;
-  gableTriCount: number;
-  gableTriSlices: Array<{ base: number; height: number }>;
+  gableTriCount: number; // triangle pieces total (both ends)
+  gableInfillCount: number; // custom infill pieces total (both ends)
+  gableInfillM2: number;
+  gableTriSlices: Array<{
+    base: number;
+    hInner: number;
+    hOuter: number;
+    pieces: GablePiece[];
+  }>;
 
   // totals
   totalM2: number;
@@ -204,24 +215,103 @@ export function calculate(input: CalcInput): CalcResult {
   const gableWallsPanels = gableWallsPanelsPerEnd * 2;
   const gableWallsM2 = gableWallsPanels * gablePerPanelArea;
 
-  // ---- Gable triangles: right-angle, base aligned to bay widths ----
-  // Per half-gable, slices run eave→apex; tall edge is on the inner side.
+  // ---- Gable triangles: right-angle slices, base aligned to bay; split by panel size + weight ----
   const halfW = width / 2;
   const slopePerM = halfW > 0 ? ridgeHeight / halfW : 0;
   const slicesPerHalf = Math.max(1, Math.ceil(halfW / baySize));
-  const gableTriSlices: Array<{ base: number; height: number }> = [];
+  const wpm2 = weightPerM2 || liningDef.weightPerM2 || 0;
+  const maxPieceWeight = wpm2 > 0 ? panelW * panelH * wpm2 : Infinity;
+
+  const gableTriSlices: Array<{ base: number; hInner: number; hOuter: number; pieces: GablePiece[] }> = [];
   let xCursor = 0;
   for (let i = 0; i < slicesPerHalf; i++) {
     const base = Math.min(baySize, halfW - xCursor);
     if (base <= 1e-6) break;
-    const heightAtInner = (xCursor + base) * slopePerM;
-    gableTriSlices.push({ base, height: heightAtInner });
+    const hOuter = xCursor * slopePerM;
+    const hInner = (xCursor + base) * slopePerM;
+
+    const pieces: GablePiece[] = [];
+    // Trapezoid area above eave for this strip
+    const trapArea = base * (hInner + hOuter) / 2;
+
+    // Determine max triangle height that fits (panel height + weight cap)
+    // Triangle weight = base * h * wpm2 (cut from base x h rectangle)
+    const maxHByWeight = wpm2 > 0 ? maxPieceWeight / (base * wpm2) : Infinity;
+    const maxTriH = Math.min(panelH, maxHByWeight);
+
+    if (base > panelW + 1e-6) {
+      // Width exceeds panel width — flag but still emit single piece (shouldn't happen if baySize ≤ panelW)
+      warnings.push(`Gable slice base ${base.toFixed(2)}m exceeds panel width ${panelW}m.`);
+    }
+
+    if (hInner <= maxTriH + 1e-6) {
+      // Single triangle covers the whole trapezoid
+      const stockArea = base * hInner; // bounding rect
+      pieces.push({
+        kind: "triangle",
+        base,
+        height: hInner,
+        m2: trapArea, // billed area = actual fabric needed (trapezoid)
+        weight: stockArea * wpm2,
+      });
+    } else {
+      // Split: top right triangle of height = maxTriH, bottom infill rectangle
+      const triH = maxTriH;
+      const triArea = (base * triH) / 2; // triangle area
+      pieces.push({
+        kind: "triangle",
+        base,
+        height: triH,
+        m2: triArea,
+        weight: base * triH * wpm2,
+      });
+
+      // Remaining trapezoid below the triangle: height on inner = hInner - triH, on outer = hOuter
+      // Approximate as rectangle of base × (hInner - triH) for billing/cutting purposes
+      let remainingH = hInner - triH;
+      let outerRem = hOuter; // outer edge height of remaining trapezoid base region
+      // For simplicity, infill is a rectangle base × remainingH (covers down to where outer edge = remainingH)
+      // Add infill pieces, splitting horizontally if too tall/heavy
+      while (remainingH > 1e-6) {
+        const sliceH = Math.min(panelH, wpm2 > 0 ? maxPieceWeight / (base * wpm2) : Infinity, remainingH);
+        const m2 = base * sliceH;
+        pieces.push({
+          kind: "infill",
+          base,
+          height: sliceH,
+          m2,
+          weight: m2 * wpm2,
+        });
+        remainingH -= sliceH;
+        if (sliceH <= 1e-6) break;
+      }
+    }
+
+    gableTriSlices.push({ base, hInner, hOuter, pieces });
     xCursor += base;
   }
-  // 2 halves × 2 ends
-  const gableTriCount = gableTriSlices.length * 2 * 2;
-  // Sum of right triangles per half = ½ × halfW × ridgeHeight; ×2 halves ×2 ends = width × ridgeHeight
-  const gableTriM2 = width * ridgeHeight;
+
+  // Aggregate per end, then ×2 ends
+  let triPerEnd = 0;
+  let infillPerEnd = 0;
+  let triM2PerEnd = 0;
+  let infillM2PerEnd = 0;
+  for (const slice of gableTriSlices) {
+    for (const p of slice.pieces) {
+      if (p.kind === "triangle") {
+        triPerEnd += 2; // mirror to other half
+        triM2PerEnd += p.m2 * 2;
+      } else {
+        infillPerEnd += 2;
+        infillM2PerEnd += p.m2 * 2;
+      }
+    }
+  }
+  const gableTriCount = triPerEnd * 2;
+  const gableInfillCount = infillPerEnd * 2;
+  const gableTriM2Total = triM2PerEnd * 2;
+  const gableInfillM2 = infillM2PerEnd * 2;
+  const gableTriM2 = gableTriM2Total + gableInfillM2;
 
   // ---- Totals ----
   const customM2 = customWallInfill?.m2 ?? 0;
@@ -232,7 +322,8 @@ export function calculate(input: CalcInput): CalcResult {
     roofPanels +
     apexPieces +
     gableWallsPanels +
-    gableTriCount;
+    gableTriCount +
+    gableInfillCount;
 
   const totalWeightKg = totalM2 * (weightPerM2 || liningDef.weightPerM2);
   const totalCost = totalM2 * costPerM2;
@@ -256,6 +347,8 @@ export function calculate(input: CalcInput): CalcResult {
     gableWallsPanels,
     gableTriM2,
     gableTriCount,
+    gableInfillCount,
+    gableInfillM2,
     gableTriSlices,
     totalM2,
     totalPanels,
