@@ -42,202 +42,243 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
   const result = useMemo<CalcResult>(() => calculate(calcInput), [value, pricing]);
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[420px_1fr] items-start">
-      {/* Inputs */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Marquee specification
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Length (m)">
-              <Input type="number" inputMode="decimal" value={value.length} onChange={(e) => set("length", num(e.target.value))} />
-            </Field>
-            <Field label="Width (m)">
-              <Input type="number" inputMode="decimal" value={value.width} onChange={(e) => set("width", num(e.target.value))} />
-            </Field>
-            <Field label="Eave height (m)">
-              <Input type="number" inputMode="decimal" step="0.1" value={value.eaveHeight} onChange={(e) => set("eaveHeight", num(e.target.value))} />
-            </Field>
-            <Field label="Pitch (°)">
-              <Input type="number" inputMode="decimal" step="0.5" value={value.pitchDeg} onChange={(e) => set("pitchDeg", num(e.target.value))} />
-            </Field>
-            <Field label="Bay size (m)">
-              <Select value={String(value.baySize)} onValueChange={(v) => set("baySize", Number(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3">3 m</SelectItem>
-                  <SelectItem value="5">5 m</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Lining type">
-              <Select value={value.liningType} onValueChange={(v) => set("liningType", v as CalcInput["liningType"])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {LINING_TYPES.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.id} ({l.panelW}×{l.panelH}m)</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
+    <Tabs defaultValue="overview" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-grid sm:grid-cols-4">
+        <TabsTrigger value="overview" className="gap-1.5"><LayoutDashboard className="h-3.5 w-3.5" />Overview</TabsTrigger>
+        <TabsTrigger value="diagrams" className="gap-1.5"><Ruler className="h-3.5 w-3.5" />Diagrams</TabsTrigger>
+        <TabsTrigger value="labour" className="gap-1.5"><HardHat className="h-3.5 w-3.5" />Install</TabsTrigger>
+        <TabsTrigger value="manufacturing" className="gap-1.5"><Factory className="h-3.5 w-3.5" />Manufacturing</TabsTrigger>
+      </TabsList>
 
-          <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
-            <ToggleRow
-              label="Roof drops 250mm past eave (seal to wall)"
-              checked={value.roofOverhangEnabled}
-              onChange={(v) => set("roofOverhangEnabled", v)}
-            />
-            <ToggleRow
-              label="Walls have 250mm floor seal excess"
-              checked={value.wallFloorSealEnabled}
-              onChange={(v) => set("wallFloorSealEnabled", v)}
-            />
-          </div>
+      <TabsContent value="overview" className="space-y-6">
+        <div className="grid gap-6 lg:grid-cols-[420px_1fr] items-start">
+          {/* Inputs */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Marquee specification
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Length (m)">
+                  <Input type="number" inputMode="decimal" value={value.length} onChange={(e) => set("length", num(e.target.value))} />
+                </Field>
+                <Field label="Width (m)">
+                  <Input type="number" inputMode="decimal" value={value.width} onChange={(e) => set("width", num(e.target.value))} />
+                </Field>
+                <Field label="Eave height (m)">
+                  <Input type="number" inputMode="decimal" step="0.1" value={value.eaveHeight} onChange={(e) => set("eaveHeight", num(e.target.value))} />
+                </Field>
+                <Field label="Pitch (°)">
+                  <Input type="number" inputMode="decimal" step="0.5" value={value.pitchDeg} onChange={(e) => set("pitchDeg", num(e.target.value))} />
+                </Field>
+                <Field label="Bay size (m)">
+                  <Select value={String(value.baySize)} onValueChange={(v) => set("baySize", Number(v))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3 m</SelectItem>
+                      <SelectItem value="5">5 m</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Lining type">
+                  <Select value={value.liningType} onValueChange={(v) => set("liningType", v as CalcInput["liningType"])}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LINING_TYPES.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>{l.id} ({l.panelW}×{l.panelH}m)</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs">Apex piece width (m)</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                placeholder={`auto: ${fmt(result.apexAuto)}`}
-                value={value.apexOverride ?? ""}
-                onChange={(e) => set("apexOverride", e.target.value === "" ? null : num(e.target.value))}
+              <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+                <ToggleRow
+                  label="Roof drops 250mm past eave (seal to wall)"
+                  checked={value.roofOverhangEnabled}
+                  onChange={(v) => set("roofOverhangEnabled", v)}
+                />
+                <ToggleRow
+                  label="Walls have 250mm floor seal excess"
+                  checked={value.wallFloorSealEnabled}
+                  onChange={(v) => set("wallFloorSealEnabled", v)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Apex piece width (m)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    placeholder={`auto: ${fmt(result.apexAuto)}`}
+                    value={value.apexOverride ?? ""}
+                    onChange={(e) => set("apexOverride", e.target.value === "" ? null : num(e.target.value))}
+                  />
+                  <span className="tabular text-xs text-muted-foreground whitespace-nowrap">
+                    using {fmt(result.apexWidth)}
+                  </span>
+                </div>
+              </div>
+
+              {rightExtra}
+            </CardContent>
+          </Card>
+
+          {/* Results */}
+          <div className="space-y-4">
+            {result.warnings.length > 0 && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Specification notes</AlertTitle>
+                <AlertDescription>
+                  <ul className="mt-1 list-disc space-y-1 pl-4 text-xs">
+                    {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Stat label="Total panels" value={String(result.totalPanels)} unit="pcs" highlight />
+              <Stat label="Total area" value={fmt(result.totalM2)} unit="m²" />
+              <Stat label="Weight" value={fmt(result.totalWeightKg, 1)} unit="kg" />
+              <Stat label="Cost" value={fmt(result.totalCost)} unit={pricing ? "" : "(set price)"} />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <AreaCard
+                title="Walls"
+                m2={result.wallsM2}
+                panels={result.wallsPanels}
+                sub={`${result.wallStacks} stack${result.wallStacks === 1 ? "" : "s"} × ${result.bays} bays × 2 sides · ${fmt(panelW)}×${fmt(result.wallPanelHeight)}m panels`}
               />
-              <span className="tabular text-xs text-muted-foreground whitespace-nowrap">
-                using {fmt(result.apexWidth)}
-              </span>
+              {result.customWallInfill ? (
+                <AreaCard
+                  title="Custom wall infill"
+                  m2={result.customWallInfill.m2}
+                  panels={result.customWallInfill.panelsCount}
+                  sub={`${fmt(result.customWallInfill.height)}m tall (custom cut)`}
+                  accent
+                  customCut
+                />
+              ) : (
+                <EmptyCard title="Custom wall infill" sub="Not needed — wall fits whole panels" />
+              )}
+              <AreaCard
+                title="Roof"
+                m2={result.roofM2}
+                panels={result.roofPanels}
+                sub={`full panels · ${fmt(panelW)}×${fmt(result.roofPanelHeight)}m`}
+              />
+              {result.customRoofEave ? (
+                <AreaCard
+                  title="Custom roof eave"
+                  m2={result.customRoofEave.m2}
+                  panels={result.customRoofEave.panelsCount}
+                  sub={`${fmt(panelW)}×${fmt(result.customRoofEave.height)}m cut at eave to keep apex ≤ panel max`}
+                  accent
+                  customCut
+                />
+              ) : (
+                <EmptyCard title="Custom roof eave" sub="Not needed — apex fits in one panel" />
+              )}
+              <AreaCard
+                title="Apex"
+                m2={result.apexM2}
+                panels={result.apexPieces}
+                sub={`${fmt(result.apexWidth)}m × ${fmt(value.baySize, 0)}m × ${result.bays} bays`}
+                accent
+                customCut
+              />
+              <AreaCard
+                title="Gable walls"
+                m2={result.gableWallsM2}
+                panels={result.gableWallsPanels}
+                sub={`rectangular fill, both ends · ${fmt(panelW)}×${fmt(panelH)}m panels`}
+              />
+              <AreaCard
+                title="Gable triangles"
+                m2={result.gableTriM2 - result.gableInfillM2}
+                panels={result.gableTriCount}
+                sub={`right-angle, hypotenuse on roof beam, base = ${fmt(value.baySize, 0)}m bay`}
+                accent
+                customCut
+              />
+              {result.gableInfillCount > 0 ? (
+                <AreaCard
+                  title="Gable infill"
+                  m2={result.gableInfillM2}
+                  panels={result.gableInfillCount}
+                  sub="rectangle below each triangle, down to eave"
+                  accent
+                  customCut
+                />
+              ) : (
+                <EmptyCard title="Gable infill" sub="Not needed — eave-most slice only" />
+              )}
             </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                  Geometry
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                  <KV k="Slope length" v={`${fmt(result.slopeLength)} m`} />
+                  <KV k="Ridge height (total)" v={`${fmt(result.ridgeHeightTotal)} m`} />
+                  <KV k="Bays" v={String(result.bays)} />
+                  <KV k="Apex (auto)" v={`${fmt(result.apexAuto)} m`} />
+                </div>
+              </CardContent>
+            </Card>
           </div>
-
-          {rightExtra}
-        </CardContent>
-      </Card>
-
-      {/* Results */}
-      <div className="space-y-4">
-        {result.warnings.length > 0 && (
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Specification notes</AlertTitle>
-            <AlertDescription>
-              <ul className="mt-1 list-disc space-y-1 pl-4 text-xs">
-                {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Total panels" value={String(result.totalPanels)} unit="pcs" highlight />
-          <Stat label="Total area" value={fmt(result.totalM2)} unit="m²" />
-          <Stat label="Weight" value={fmt(result.totalWeightKg, 1)} unit="kg" />
-          <Stat label="Cost" value={fmt(result.totalCost)} unit={pricing ? "" : "(set price)"} />
         </div>
+      </TabsContent>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <AreaCard
-            title="Walls"
-            m2={result.wallsM2}
-            panels={result.wallsPanels}
-            sub={`${result.wallStacks} stack${result.wallStacks === 1 ? "" : "s"} × ${result.bays} bays × 2 sides · ${fmt(panelW)}×${fmt(result.wallPanelHeight)}m panels`}
-          />
-          {result.customWallInfill ? (
-            <AreaCard
-              title="Custom wall infill"
-              m2={result.customWallInfill.m2}
-              panels={result.customWallInfill.panelsCount}
-              sub={`${fmt(result.customWallInfill.height)}m tall (custom cut)`}
-              accent
-              customCut
-            />
-          ) : (
-            <EmptyCard title="Custom wall infill" sub="Not needed — wall fits whole panels" />
-          )}
-          <AreaCard
-            title="Roof"
-            m2={result.roofM2}
-            panels={result.roofPanels}
-            sub={`full panels · ${fmt(panelW)}×${fmt(result.roofPanelHeight)}m`}
-          />
-          {result.customRoofEave ? (
-            <AreaCard
-              title="Custom roof eave"
-              m2={result.customRoofEave.m2}
-              panels={result.customRoofEave.panelsCount}
-              sub={`${fmt(panelW)}×${fmt(result.customRoofEave.height)}m cut at eave to keep apex ≤ panel max`}
-              accent
-              customCut
-            />
-          ) : (
-            <EmptyCard title="Custom roof eave" sub="Not needed — apex fits in one panel" />
-          )}
-          <AreaCard
-            title="Apex"
-            m2={result.apexM2}
-            panels={result.apexPieces}
-            sub={`${fmt(result.apexWidth)}m × ${fmt(value.baySize, 0)}m × ${result.bays} bays`}
-            accent
-            customCut
-          />
-          <AreaCard
-            title="Gable walls"
-            m2={result.gableWallsM2}
-            panels={result.gableWallsPanels}
-            sub={`rectangular fill, both ends · ${fmt(panelW)}×${fmt(panelH)}m panels`}
-          />
-          <AreaCard
-            title="Gable triangles"
-            m2={result.gableTriM2 - result.gableInfillM2}
-            panels={result.gableTriCount}
-            sub={`right-angle, hypotenuse on roof beam, base = ${fmt(value.baySize, 0)}m bay`}
-            accent
-            customCut
-          />
-          {result.gableInfillCount > 0 ? (
-            <AreaCard
-              title="Gable infill"
-              m2={result.gableInfillM2}
-              panels={result.gableInfillCount}
-              sub="rectangle below each triangle, down to eave"
-              accent
-              customCut
-            />
-          ) : (
-            <EmptyCard title="Gable infill" sub="Not needed — eave-most slice only" />
-          )}
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-              Geometry
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-              <KV k="Slope length" v={`${fmt(result.slopeLength)} m`} />
-              <KV k="Ridge height (total)" v={`${fmt(result.ridgeHeightTotal)} m`} />
-              <KV k="Bays" v={String(result.bays)} />
-              <KV k="Apex (auto)" v={`${fmt(result.apexAuto)} m`} />
-            </div>
-          </CardContent>
-        </Card>
-
-      </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
+      <TabsContent value="diagrams" className="space-y-6">
         <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
         <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
-      </div>
-    </div>
+      </TabsContent>
+
+      <TabsContent value="labour">
+        <ComingSoon
+          icon={<HardHat className="h-8 w-8" />}
+          title="Install & Labour"
+          description="Estimate install time and equipment requirements based on team size, marquee dimensions, and lining complexity. Will include rigging crew sizing, scaffold/MEWP needs, and a per-stage time breakdown."
+        />
+      </TabsContent>
+
+      <TabsContent value="manufacturing">
+        <ComingSoon
+          icon={<Factory className="h-8 w-8" />}
+          title="Manufacturing"
+          description="Scope material quantities, supplier costs, and production hours per piece. Will pull from a bill-of-materials database and generate a per-job manufacturing plan with lead times."
+        />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function ComingSoon({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <Card className="border-dashed">
+      <CardHeader className="items-center text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          {icon}
+        </div>
+        <div className="flex items-center gap-2 pt-2">
+          <CardTitle>{title}</CardTitle>
+          <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">Coming soon</Badge>
+        </div>
+        <CardDescription className="max-w-md pt-1">{description}</CardDescription>
+      </CardHeader>
+    </Card>
   );
 }
 
