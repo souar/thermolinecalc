@@ -332,18 +332,6 @@ function ComingSoon({ icon, title, description }: { icon: React.ReactNode; title
   );
 }
 
-function EmptyCard({ title, sub }: { title: string; sub: string }) {
-  return (
-    <Card className="border-dashed bg-muted/20">
-      <CardContent className="p-4">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">{title}</div>
-        <div className="mt-1 tabular text-2xl font-semibold text-muted-foreground/60">—</div>
-        <div className="mt-1 text-xs text-muted-foreground">{sub}</div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
