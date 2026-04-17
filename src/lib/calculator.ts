@@ -54,6 +54,9 @@ export interface CalcResult {
   // roof (full panels only)
   roofM2: number;
   roofPanels: number;
+  roofPanelHeight: number;
+  wallPanelHeight: number;
+  customRoofEave: CustomInfill | null;
 
   // apex (custom strip)
   apexWidth: number;
