@@ -294,94 +294,25 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
             <SectionTable
               title="Roof"
               description="Full roof panels + apex strips + any custom eave cuts"
-              rows={allResults.map((ar) => {
-                const r = ar.result;
-                const panels = r.roofPanels + r.apexPieces + (r.customRoofEave?.panelsCount ?? 0);
-                const m2 = r.roofM2 + r.apexM2 + (r.customRoofEave?.m2 ?? 0);
-                const parts: string[] = [`${r.roofPanels} full`];
-                if (r.apexPieces > 0) parts.push(`${r.apexPieces} apex`);
-                if (r.customRoofEave) parts.push(`${r.customRoofEave.panelsCount} eave cut`);
-                const cutNote = r.roofPanelHeight < ar.panelH - 1e-3
-                  ? ` (cut to ${fmt(r.roofPanelHeight)}m)`
-                  : "";
-                return {
-                  liningId: ar.lining.id,
-                  panels,
-                  panelSize: `${fmt(ar.panelW)}×${fmt(ar.panelH)} m${cutNote}`,
-                  perBay: r.bays > 0 ? panels / r.bays : 0,
-                  m2,
-                  weight: m2 * (ar.weight || 0),
-                  cost: m2 * (ar.cost || 0),
-                  notes: parts.join(" + "),
-                };
-              })}
-              selectedId={value.liningType}
+              rows={roofRows}
             />
 
             <SectionTable
               title="Walls"
               description="Long-side walls (both sides) including any custom infill"
-              rows={allResults.map((ar) => {
-                const r = ar.result;
-                const panels = r.wallsPanels + (r.customWallInfill?.panelsCount ?? 0);
-                const m2 = r.wallsM2 + (r.customWallInfill?.m2 ?? 0);
-                const cutNote = r.wallPanelHeight < ar.panelH - 1e-3
-                  ? ` (cut to ${fmt(r.wallPanelHeight)}m)`
-                  : "";
-                return {
-                  liningId: ar.lining.id,
-                  panels,
-                  panelSize: `${fmt(ar.panelW)}×${fmt(ar.panelH)} m${cutNote}`,
-                  perBay: r.bays > 0 ? panels / r.bays : 0,
-                  m2,
-                  weight: m2 * (ar.weight || 0),
-                  cost: m2 * (ar.cost || 0),
-                  notes: r.customWallInfill
-                    ? `${r.wallsPanels} full + ${r.customWallInfill.panelsCount} infill (${fmt(r.customWallInfill.height)}m)`
-                    : `${r.wallStacks} stack${r.wallStacks === 1 ? "" : "s"} × ${r.bays} bays × 2 sides`,
-                };
-              })}
-              selectedId={value.liningType}
+              rows={wallRows}
             />
 
             <SectionTable
               title="Gables"
               description="Both gable ends — rectangular fill + custom triangles + infills"
-              rows={allResults.map((ar) => {
-                const r = ar.result;
-                const panels = r.gableWallsPanels + r.gableTriCount + r.gableInfillCount;
-                const m2 = r.gableWallsM2 + r.gableTriM2;
-                const piecesPerEnd = panels / 2;
-                return {
-                  liningId: ar.lining.id,
-                  panels,
-                  panelSize: `${fmt(ar.panelW)}×${fmt(ar.panelH)} m`,
-                  perBay: piecesPerEnd,
-                  perBayLabel: `${fmt(piecesPerEnd, 0)} / end`,
-                  m2,
-                  weight: m2 * (ar.weight || 0),
-                  cost: m2 * (ar.cost || 0),
-                  notes: `${r.gableWallsPanels} wall + ${r.gableTriCount} tri + ${r.gableInfillCount} infill`,
-                };
-              })}
-              selectedId={value.liningType}
+              rows={gableRows}
             />
 
             <SectionTable
               title="Rafter covers"
               description="Coming soon — covers along each roof rafter"
-              rows={allResults.map((ar) => ({
-                liningId: ar.lining.id,
-                panels: null,
-                panelSize: "—",
-                perBay: null,
-                m2: null,
-                weight: null,
-                cost: null,
-                notes: "Coming soon",
-                muted: true,
-              }))}
-              selectedId={value.liningType}
+              rows={rafterRows}
             />
 
             <Card>
