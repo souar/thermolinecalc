@@ -425,9 +425,27 @@ export function calculate(input: CalcInput): CalcResult {
     totalPanels,
     totalWeightKg,
     totalCost,
+    roofRafterCovers,
+    legRafterCovers,
     warnings,
   };
 }
+
+export const DEFAULT_INPUT: CalcInput = {
+  length: 50,
+  width: 30,
+  eaveHeight: 3,
+  pitchDeg: 18,
+  baySize: 5,
+  liningType: "MAL18 / Thermoline",
+  roofOverhangEnabled: true,
+  wallFloorSealEnabled: true,
+  apexOverride: null,
+  roofRaftersEnabled: false,
+  legRaftersEnabled: false,
+  rafterFlapWidth: 0.4,
+  roofRafterLength: 10,
+};
 
 export const DEFAULT_INPUT: CalcInput = {
   length: 50,
