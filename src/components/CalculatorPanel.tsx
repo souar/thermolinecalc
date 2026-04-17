@@ -179,78 +179,98 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
               <Stat label="Cost" value={fmt(result.totalCost)} unit={pricing ? "" : "(set price)"} />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <AreaCard
-                title="Walls"
-                m2={result.wallsM2}
-                panels={result.wallsPanels}
-                sub={`${result.wallStacks} stack${result.wallStacks === 1 ? "" : "s"} × ${result.bays} bays × 2 sides · ${fmt(panelW)}×${fmt(result.wallPanelHeight)}m panels`}
-              />
-              {result.customWallInfill ? (
-                <AreaCard
-                  title="Custom wall infill"
-                  m2={result.customWallInfill.m2}
-                  panels={result.customWallInfill.panelsCount}
-                  sub={`${fmt(result.customWallInfill.height)}m tall (custom cut)`}
-                  accent
-                  customCut
-                />
-              ) : (
-                <EmptyCard title="Custom wall infill" sub="Not needed — wall fits whole panels" />
-              )}
-              <AreaCard
-                title="Roof"
-                m2={result.roofM2}
-                panels={result.roofPanels}
-                sub={`full panels · ${fmt(panelW)}×${fmt(result.roofPanelHeight)}m`}
-              />
-              {result.customRoofEave ? (
-                <AreaCard
-                  title="Custom roof eave"
-                  m2={result.customRoofEave.m2}
-                  panels={result.customRoofEave.panelsCount}
-                  sub={`${fmt(panelW)}×${fmt(result.customRoofEave.height)}m cut at eave to keep apex ≤ panel max`}
-                  accent
-                  customCut
-                />
-              ) : (
-                <EmptyCard title="Custom roof eave" sub="Not needed — apex fits in one panel" />
-              )}
-              <AreaCard
-                title="Apex"
-                m2={result.apexM2}
-                panels={result.apexPieces}
-                sub={`${fmt(result.apexWidth)}m × ${fmt(value.baySize, 0)}m × ${result.bays} bays`}
-                accent
-                customCut
-              />
-              <AreaCard
-                title="Gable walls"
-                m2={result.gableWallsM2}
-                panels={result.gableWallsPanels}
-                sub={`rectangular fill, both ends · ${fmt(panelW)}×${fmt(panelH)}m panels`}
-              />
-              <AreaCard
-                title="Gable triangles"
-                m2={result.gableTriM2 - result.gableInfillM2}
-                panels={result.gableTriCount}
-                sub={`right-angle, hypotenuse on roof beam, base = ${fmt(value.baySize, 0)}m bay`}
-                accent
-                customCut
-              />
-              {result.gableInfillCount > 0 ? (
-                <AreaCard
-                  title="Gable infill"
-                  m2={result.gableInfillM2}
-                  panels={result.gableInfillCount}
-                  sub="rectangle below each triangle, down to eave"
-                  accent
-                  customCut
-                />
-              ) : (
-                <EmptyCard title="Gable infill" sub="Not needed — eave-most slice only" />
-              )}
-            </div>
+            <SectionTable
+              title="Roof"
+              description="Full roof panels + apex strips + any custom eave cuts"
+              rows={allResults.map((ar) => {
+                const r = ar.result;
+                const panels = r.roofPanels + r.apexPieces + (r.customRoofEave?.panelsCount ?? 0);
+                const m2 = r.roofM2 + r.apexM2 + (r.customRoofEave?.m2 ?? 0);
+                const parts: string[] = [`${r.roofPanels} full`];
+                if (r.apexPieces > 0) parts.push(`${r.apexPieces} apex`);
+                if (r.customRoofEave) parts.push(`${r.customRoofEave.panelsCount} eave cut`);
+                const cutNote = r.roofPanelHeight < ar.panelH - 1e-3
+                  ? ` (cut to ${fmt(r.roofPanelHeight)}m)`
+                  : "";
+                return {
+                  liningId: ar.lining.id,
+                  panels,
+                  panelSize: `${fmt(ar.panelW)}×${fmt(ar.panelH)} m${cutNote}`,
+                  perBay: r.bays > 0 ? panels / r.bays : 0,
+                  m2,
+                  weight: m2 * (ar.weight || 0),
+                  cost: m2 * (ar.cost || 0),
+                  notes: parts.join(" + "),
+                };
+              })}
+              selectedId={value.liningType}
+            />
+
+            <SectionTable
+              title="Walls"
+              description="Long-side walls (both sides) including any custom infill"
+              rows={allResults.map((ar) => {
+                const r = ar.result;
+                const panels = r.wallsPanels + (r.customWallInfill?.panelsCount ?? 0);
+                const m2 = r.wallsM2 + (r.customWallInfill?.m2 ?? 0);
+                const cutNote = r.wallPanelHeight < ar.panelH - 1e-3
+                  ? ` (cut to ${fmt(r.wallPanelHeight)}m)`
+                  : "";
+                return {
+                  liningId: ar.lining.id,
+                  panels,
+                  panelSize: `${fmt(ar.panelW)}×${fmt(ar.panelH)} m${cutNote}`,
+                  perBay: r.bays > 0 ? panels / r.bays : 0,
+                  m2,
+                  weight: m2 * (ar.weight || 0),
+                  cost: m2 * (ar.cost || 0),
+                  notes: r.customWallInfill
+                    ? `${r.wallsPanels} full + ${r.customWallInfill.panelsCount} infill (${fmt(r.customWallInfill.height)}m)`
+                    : `${r.wallStacks} stack${r.wallStacks === 1 ? "" : "s"} × ${r.bays} bays × 2 sides`,
+                };
+              })}
+              selectedId={value.liningType}
+            />
+
+            <SectionTable
+              title="Gables"
+              description="Both gable ends — rectangular fill + custom triangles + infills"
+              rows={allResults.map((ar) => {
+                const r = ar.result;
+                const panels = r.gableWallsPanels + r.gableTriCount + r.gableInfillCount;
+                const m2 = r.gableWallsM2 + r.gableTriM2;
+                const piecesPerEnd = panels / 2;
+                return {
+                  liningId: ar.lining.id,
+                  panels,
+                  panelSize: `${fmt(ar.panelW)}×${fmt(ar.panelH)} m`,
+                  perBay: piecesPerEnd,
+                  perBayLabel: `${fmt(piecesPerEnd, 0)} / end`,
+                  m2,
+                  weight: m2 * (ar.weight || 0),
+                  cost: m2 * (ar.cost || 0),
+                  notes: `${r.gableWallsPanels} wall + ${r.gableTriCount} tri + ${r.gableInfillCount} infill`,
+                };
+              })}
+              selectedId={value.liningType}
+            />
+
+            <SectionTable
+              title="Rafter covers"
+              description="Coming soon — covers along each roof rafter"
+              rows={allResults.map((ar) => ({
+                liningId: ar.lining.id,
+                panels: null,
+                panelSize: "—",
+                perBay: null,
+                m2: null,
+                weight: null,
+                cost: null,
+                notes: "Coming soon",
+                muted: true,
+              }))}
+              selectedId={value.liningType}
+            />
 
             <Card>
               <CardHeader>
