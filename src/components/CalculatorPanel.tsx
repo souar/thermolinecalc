@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 import { CalcInput, CalcResult, LINING_TYPES, calculate, fmt } from "@/lib/calculator";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertTriangle, HardHat, Factory, LayoutDashboard, Ruler } from "lucide-react";
 import { BayDiagram } from "./BayDiagram";
 import { GableDiagram } from "./GableDiagram";
 import { LINING_TYPES as LT } from "@/lib/calculator";
