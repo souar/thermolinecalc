@@ -113,6 +113,9 @@ export interface CalcResult {
 
 const OVERHANG = 0.25;
 const FLOOR_SEAL = 0.25;
+const RAFTER_FLAP_DEFAULT = 0.4;
+const RAFTER_LENGTH_DEFAULT = 10;
+const RAFTER_OVERLAP = 0.15;
 
 export function calculate(input: CalcInput): CalcResult {
   const {
