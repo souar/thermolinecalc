@@ -447,18 +447,6 @@ export const DEFAULT_INPUT: CalcInput = {
   roofRafterLength: 10,
 };
 
-export const DEFAULT_INPUT: CalcInput = {
-  length: 50,
-  width: 30,
-  eaveHeight: 3,
-  pitchDeg: 18,
-  baySize: 5,
-  liningType: "MAL18 / Thermoline",
-  roofOverhangEnabled: true,
-  wallFloorSealEnabled: true,
-  apexOverride: null,
-};
-
 export function fmt(n: number, dp = 2): string {
   if (!isFinite(n)) return "—";
   return n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
