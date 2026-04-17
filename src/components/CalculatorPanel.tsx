@@ -51,6 +51,26 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
   };
   const result = useMemo<CalcResult>(() => calculate(calcInput), [value, pricing]);
 
+  // Per-lining results for comparison tables
+  const allResults = useMemo(() => {
+    return LT.map((l) => {
+      const pr = pricingAll?.find((p) => p.lining_type === l.id);
+      const pw = pr?.panel_width != null ? Number(pr.panel_width) : l.panelW;
+      const ph = pr?.panel_height != null ? Number(pr.panel_height) : l.panelH;
+      const cost = pr?.cost_per_m2 != null ? Number(pr.cost_per_m2) : 0;
+      const weight = pr?.weight_per_m2 != null ? Number(pr.weight_per_m2) : l.weightPerM2;
+      const r = calculate({
+        ...value,
+        liningType: l.id,
+        panelW: pw,
+        panelH: ph,
+        costPerM2: cost,
+        weightPerM2: weight,
+      });
+      return { lining: l, panelW: pw, panelH: ph, cost, weight, result: r };
+    });
+  }, [value, pricingAll]);
+
   return (
     <Tabs defaultValue="overview" className="space-y-6">
       <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-grid sm:grid-cols-4">
