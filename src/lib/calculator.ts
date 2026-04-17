@@ -34,6 +34,10 @@ export interface CustomInfill {
   m2: number;
 }
 
+export type GablePiece =
+  | { kind: "triangle"; base: number; height: number; m2: number; weight: number }
+  | { kind: "infill"; base: number; height: number; m2: number; weight: number };
+
 export interface CalcResult {
   // geometry
   slopeLength: number;
