@@ -286,6 +286,40 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
                   checked={value.wallFloorSealEnabled}
                   onChange={(v) => set("wallFloorSealEnabled", v)}
                 />
+                <ToggleRow
+                  label="Roof rafter covers"
+                  checked={!!value.roofRaftersEnabled}
+                  onChange={(v) => set("roofRaftersEnabled", v)}
+                />
+                <ToggleRow
+                  label="Leg rafter covers"
+                  checked={!!value.legRaftersEnabled}
+                  onChange={(v) => set("legRaftersEnabled", v)}
+                />
+                {(value.roofRaftersEnabled || value.legRaftersEnabled) && (
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <Field label="Flap width (mm)">
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        step="10"
+                        value={Math.round((value.rafterFlapWidth ?? 0.4) * 1000)}
+                        onChange={(e) => set("rafterFlapWidth", num(e.target.value) / 1000)}
+                      />
+                    </Field>
+                    {value.roofRaftersEnabled && (
+                      <Field label="Roof rafter length (m)">
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          step="0.5"
+                          value={value.roofRafterLength ?? 10}
+                          onChange={(e) => set("roofRafterLength", num(e.target.value))}
+                        />
+                      </Field>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
