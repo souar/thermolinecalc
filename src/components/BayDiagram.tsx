@@ -10,8 +10,8 @@ interface Props {
 
 export function BayDiagram({ input, result, panelW, panelH }: Props) {
   const { width, eaveHeight } = input;
-  const { ridgeHeight, wallStacks, customWallInfill, apexWidth } = result;
-  const roofPanelsPerSide = result.roofPanels / 2 / result.bays;
+  const { ridgeHeight, wallStacks, customWallInfill, apexWidth, customRoofEave } = result;
+  const roofPanelsPerSide = result.bays > 0 ? result.roofPanels / 2 / result.bays : 0;
 
   // viewBox sizing
   const totalH = eaveHeight + ridgeHeight;
