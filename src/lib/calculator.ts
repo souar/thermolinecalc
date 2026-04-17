@@ -123,13 +123,25 @@ export function calculate(input: CalcInput): CalcResult {
   // exceeds that cap, drop one roof panel row per side — the freed slope
   // length flows into the apex strip instead.
   const apexMax = Math.max(panelW, panelH);
-  let apexAuto = geometricApex + 2 * overlapExcess;
-  let roofPanelsPerSide = wholeAlongSlope;
+  let apexAuto: number;
+  let roofPanelsPerSide: number;
+  let roofM2PerPanel: number;
 
-  while (apexAuto > apexMax && roofPanelsPerSide > 0) {
-    roofPanelsPerSide -= 1;
-    const newGeo = Math.max(0, (effectiveSlope - roofPanelsPerSide * panelH) * 2);
-    apexAuto = newGeo + 2 * overlapExcess;
+  if (effectiveSlope <= panelH + 1e-6) {
+    // Slope fits within a single panel — one cut panel per side per bay
+    roofPanelsPerSide = 1;
+    roofM2PerPanel = panelW * effectiveSlope;
+    apexAuto = 0;
+  } else {
+    roofPanelsPerSide = wholeAlongSlope;
+    roofM2PerPanel = panelArea;
+    apexAuto = geometricApex + 2 * overlapExcess;
+
+    while (apexAuto > apexMax && roofPanelsPerSide > 0) {
+      roofPanelsPerSide -= 1;
+      const newGeo = Math.max(0, (effectiveSlope - roofPanelsPerSide * panelH) * 2);
+      apexAuto = newGeo + 2 * overlapExcess;
+    }
   }
 
   if (apexAuto > apexMax) {
@@ -146,40 +158,50 @@ export function calculate(input: CalcInput): CalcResult {
   }
 
   const roofPanels = roofPanelsPerSide * 2 * bays;
-  const roofM2 = roofPanels * panelArea;
+  const roofM2 = roofPanels * roofM2PerPanel;
 
-  const apexPieces = bays;
+  const apexPieces = apexWidth > 1e-6 ? bays : 0;
   const apexM2 = apexWidth * baySize * bays;
 
   // ---- Walls (long sides) ----
-  // Wall height after apex absorption: apex pulled the roof up by `overlapExcess` on each side,
-  // so the eave effectively drops by overlapExcess (wall doesn't have to reach as high).
-  // For panel stacking we use the actual wall height + floor seal, ignoring overlap (handled by apex).
   const wallHeight = eaveHeight + (wallFloorSealEnabled ? FLOOR_SEAL : 0);
-  const fullStacks = Math.floor(wallHeight / panelH);
-  const leftover = wallHeight - fullStacks * panelH;
-
-  const wallStacks = fullStacks;
-  const wallsPanels = bays * 2 * fullStacks;
-  const wallsM2 = wallsPanels * panelArea;
-
+  let wallStacks: number;
+  let wallsPanels: number;
+  let wallsM2: number;
   let customWallInfill: CustomInfill | null = null;
-  if (leftover > 1e-6) {
-    const infillCount = bays * 2;
-    customWallInfill = {
-      height: leftover,
-      panelsCount: infillCount,
-      m2: infillCount * panelW * leftover,
-    };
-    warnings.push(
-      `Wall height ${wallHeight.toFixed(2)}m exceeds ${fullStacks} × ${panelH}m — added ${infillCount} custom infill panels at ${leftover.toFixed(2)}m tall.`,
-    );
+  let fullStacks = 0;
+
+  if (wallHeight <= panelH + 1e-6) {
+    // Wall fits within a single panel — one cut panel per bay-side
+    wallStacks = 1;
+    wallsPanels = bays * 2;
+    wallsM2 = wallsPanels * panelW * wallHeight;
+  } else {
+    fullStacks = Math.floor(wallHeight / panelH);
+    const leftover = wallHeight - fullStacks * panelH;
+    wallStacks = fullStacks;
+    wallsPanels = bays * 2 * fullStacks;
+    wallsM2 = wallsPanels * panelArea;
+
+    if (leftover > 1e-6) {
+      const infillCount = bays * 2;
+      customWallInfill = {
+        height: leftover,
+        panelsCount: infillCount,
+        m2: infillCount * panelW * leftover,
+      };
+      warnings.push(
+        `Wall height ${wallHeight.toFixed(2)}m exceeds ${fullStacks} × ${panelH}m — added ${infillCount} custom infill panels at ${leftover.toFixed(2)}m tall.`,
+      );
+    }
   }
 
   // ---- Gable walls (rectangle below eave on each end) ----
-  const gableWallsPanelsPerEnd = Math.ceil(width / panelW) * Math.max(1, fullStacks);
+  const gableStacks = wallHeight <= panelH + 1e-6 ? 1 : Math.max(1, fullStacks);
+  const gablePerPanelArea = panelW * Math.min(panelH, wallHeight / gableStacks);
+  const gableWallsPanelsPerEnd = Math.ceil(width / panelW) * gableStacks;
   const gableWallsPanels = gableWallsPanelsPerEnd * 2;
-  const gableWallsM2 = gableWallsPanels * panelArea;
+  const gableWallsM2 = gableWallsPanels * gablePerPanelArea;
 
   // ---- Gable triangles (custom, max width = baySize, count forced even) ----
   let slicesPerEnd = Math.ceil(width / baySize);
