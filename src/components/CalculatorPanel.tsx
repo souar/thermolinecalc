@@ -384,7 +384,7 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
 
             <SectionTable
               title="Rafter covers"
-              description="Coming soon — covers along each roof rafter"
+              description="Fabric flaps along roof and leg rafters with 150mm overlaps"
               rows={rafterRows}
             />
 
