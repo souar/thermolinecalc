@@ -195,7 +195,7 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
             title="Gable triangles"
             m2={result.gableTriM2 - result.gableInfillM2}
             panels={result.gableTriCount}
-            sub={`right-angle, base = ${fmt(value.baySize, 0)}m bay; splits if over panel weight`}
+            sub={`right-angle, hypotenuse on roof beam, base = ${fmt(value.baySize, 0)}m bay`}
             accent
             customCut
           />
@@ -204,12 +204,12 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
               title="Gable infill"
               m2={result.gableInfillM2}
               panels={result.gableInfillCount}
-              sub="custom strip below split triangles"
+              sub="rectangle below each triangle, down to eave"
               accent
               customCut
             />
           ) : (
-            <EmptyCard title="Gable infill" sub="Not needed — triangles fit standard panels" />
+            <EmptyCard title="Gable infill" sub="Not needed — eave-most slice only" />
           )}
         </div>
 
