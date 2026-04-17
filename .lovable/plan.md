@@ -1,107 +1,139 @@
 
 
-## Gable triangle filling logic — right triangles + custom infill, weight-capped
+## Fix wall/roof sizing rules: prefer cut panels at the eave, keep apex small
 
-### What the screenshot shows
-Half of a gable. Three vertical roof beams divide the half-gable into bay-wide vertical strips. Each strip is filled by a right-angle triangle whose hypotenuse runs along the roof beam (the slope), base sits on top of something, and vertical leg sits on the inner beam. The triangles get progressively taller toward the apex (right side of image). The shaded green areas show the fabric pieces.
+### Diagnosis from your screenshot (50×25, eave 3m, pitch 18°, MAL18 5×5)
+- **Effective slope** = 12.5/cos(18°) + 0.25 overhang ≈ **13.39m**
+- **Current code:** `wholeAlongSlope = floor(13.39/5) = 2` → leftover = 3.39m × 2 sides = 6.79m apex. Apex > 5m cap, so the `while` loop drops roof rows trying to shrink apex. It drops to 1, then to 0, ending at **roof = 0 panels, apex = 27.29m**. That's the bug.
+- **Walls:** wallHeight 3.25m ≤ 5m → currently outputs "5.00×5.00m panels" sub-text even though each panel is actually cut to 5×3.25m. Number is right (325 m²), label is misleading.
 
-### Current code (just shipped)
-For each half-gable we generate `slicesPerHalf` right triangles with:
-- `base = baySize` (horizontal leg along the eave line)
-- `height = (xCursor + base) × slope` (vertical leg on the inner edge, meeting the roof slope)
-- hypotenuse along the roof slope
+### Your stated rules → corrected algorithm
 
-Total area per end = full gable triangle area. No weight check. No splitting. The whole triangle is assumed to be a single fabric piece sitting from eave up to the slope.
+**Roof (per side, per bay):**
+1. Lay as many full-height roof panels (5m along slope) as possible: `fullRoofRows = floor(effectiveSlope / panelH)`.
+2. Remaining slope = `effectiveSlope − fullRoofRows × panelH`. Combined across both sides = apex strip = `remaining × 2`.
+3. **If apex ≤ panelMax (max of panelW, panelH)** → one apex piece per bay, done. Roof rows stay at full count.
+4. **If apex > panelMax** → the remaining slope per side is too long for a single apex piece to span the ridge. Keep the full roof rows AND add one **custom-cut roof panel per side** at the eave (smaller height = `remaining − apexHalfFromEachSide`), so that the apex strip narrows to ≤ panelMax. Concretely: target apex = panelMax → each side absorbs `(remaining − panelMax/2)` into a cut eave panel of that height.
+5. **Special case — slope ≤ panelH:** one cut roof panel per side covers the whole slope, apex = 0 (already implemented).
 
-### What's missing vs. your spec
+For the screenshot: `fullRoofRows = 2`, remaining = 3.39m/side, apex = 6.79m > 5m cap. Add a cut eave panel per side of height `3.39 − 5/2 = 0.89m`, apex becomes **5m**.
+- Result: **40 full roof panels (2×2×10) + 20 cut eave panels (0.89m tall) + 10 apex pieces (5m wide)** instead of 0 roof panels and a 27.29m apex.
 
-**1. The triangle alone may not fit a standard panel.**
-A right triangle with `base × height` is cut from a rectangle of `base × height`. If both `base ≤ panelW` AND `height ≤ panelH` it cuts from a single stock panel — fine. If not, it can't be made from one panel and we currently ignore that.
+**Walls (per bay, per side):**
+1. `fullWallRows = floor(wallHeight / panelH)` full-height stacked panels.
+2. `leftover = wallHeight − fullWallRows × panelH`.
+3. **If wallHeight ≤ panelH** (no full rows fit) → one cut wall panel per bay-side, sized `panelW × wallHeight` (already implemented; just relabel).
+4. **If leftover ≤ 0.25m AND `roofOverhangEnabled`** → ignore leftover; the roof's 250mm seal-to-wall overlap absorbs it. Add a notification ("Wall has Xmm excess absorbed by roof overhang"). No custom infill panel.
+5. **If leftover > 0.25m** → add custom wall infill strip of height `leftover` (current behavior).
+6. **If wallHeight > panelH × N for large N** → already handled by stacking; custom infill only when leftover remains after full stacks.
 
-**2. Weight cap rule.**
-A modified/custom piece is allowed *as long as its weight ≤ max weight of a standard wall or roof panel*. Standard max weight = `panelW × panelH × weight_per_m2` (from `lining_pricing.weight_per_m2`). If a triangle's bounding rectangle weight ≤ that cap, it can be one custom-shaped piece. If it exceeds, we must split.
-
-**3. Split rule (when too heavy).**
-- **Piece 1 (top):** a right-angle triangle that respects the slope geometry but is sized to fit within the weight/panel limits. Its hypotenuse still runs along the roof beam.
-- **Piece 2 (bottom):** a custom rectangle/trapezoid sitting *under* piece 1, filling down to the eave line. It's the leftover area that piece 1 didn't cover within that bay strip.
-
-### Proposed algorithm (per half-gable, per bay-slice)
-
-For each slice `i` in `[0, slicesPerHalf)`:
-```
-base   = min(baySize, halfW - xCursor)         // horizontal span on eave
-hInner = (xCursor + base) × slope              // tall edge (toward apex)
-hOuter = xCursor × slope                       // short edge (toward eave corner)
-```
-
-The slice area above the eave is a **right trapezoid** (or a triangle when `xCursor = 0`):
-- vertices: `(xCursor, 0)`, `(xCursor+base, 0)`, `(xCursor+base, hInner)`, `(xCursor, hOuter)`
-- The hypotenuse `(xCursor, hOuter) → (xCursor+base, hInner)` lies on the roof slope.
-
-**Step A — try a single right triangle that covers the whole trapezoid.**
-The smallest right triangle that contains the trapezoid has base `base` and height `hInner` (cut from a `base × hInner` rectangle). Weight = `base × hInner × weight_per_m2`.
-
-- If `base ≤ panelW` AND `hInner ≤ panelH` AND weight ≤ panel-weight cap → **one piece**, area billed = trapezoid area = `base × (hInner + hOuter) / 2`. Stock used = `base × hInner` (offcut = the small lower-outer triangle).
-
-**Step B — if weight cap exceeded, split into two pieces.**
-- **Piece 1 (top right triangle):** keep the slope. Reduce its height to `h1 ≤ panelH` such that `base × h1 × weight_per_m2 ≤ maxPanelWeight`. The triangle's top vertex is still at `(xCursor+base, hInner)` and it follows the slope down to where it meets a horizontal cut line at height `hInner − h1` from the trapezoid base. This horizontal line is the bottom of piece 1 / top of piece 2.
-- **Piece 2 (custom infill):** a rectangle (or right trapezoid if the slope exits piece 1 inside the bay) of width `base` and height `hInner − h1` on the inner edge. This sits below piece 1, down to the eave line. Weight check: must also be ≤ cap.
-- If piece 2 still exceeds cap → recurse: split piece 2 horizontally again.
-
-**Step C — special case for the centre slice when `width / (2·baySize)` isn't whole.**
-The innermost slice has `base < baySize` and `hInner = ridgeHeight` (apex). Same algorithm applies — outer height is `(halfW − base) × slope`, inner height is `ridgeHeight`.
-
-### Data model changes
-
-Extend each entry in `gableTriSlices` to describe the actual cut pieces:
-```ts
-type GablePiece =
-  | { kind: "triangle"; base: number; height: number; m2: number; weight: number }
-  | { kind: "infill";   base: number; height: number; m2: number; weight: number };
-
-gableTriSlices: Array<{
-  base: number;          // bay-slice horizontal span
-  hInner: number;        // tall edge (slope at inner side)
-  hOuter: number;        // short edge (slope at outer side)
-  pieces: GablePiece[];  // 1 or more pieces filling this slice
-}>;
-```
-
-Aggregate counts for the summary card:
-- `gableTriCount` = total triangle pieces across both ends
-- `gableInfillCount` = total custom-infill pieces across both ends
-- `gableTriM2` = sum of all piece areas (still equals `width × ridgeHeight` total — geometry is conserved)
+For a 3m wall (3.25m with seal): `fullWallRows = 0`, wallHeight ≤ 5m → 20 cut panels at 5×3.25m. Same numbers, but the sub-text card should say **"cut panels · 5.00×3.25m"** not "5.00×5.00m".
 
 ### Calculator changes (`src/lib/calculator.ts`)
-- Read `weight_per_m2` from pricing (already on `LiningPricing`). If null → skip weight cap and only enforce panel-size cap.
-- Compute `maxPieceWeight = panelW × panelH × weight_per_m2` (or `Infinity` if no weight).
-- Replace the slice-building loop with the algorithm above (Step A → Step B recursion).
-- Return the richer `gableTriSlices` shape plus piece counts.
 
-### Diagram changes (`src/components/GableDiagram.tsx`)
-- Render each slice's pieces as separate polygons:
-  - Triangle pieces: same right-triangle shape as today, but possibly shorter (top-anchored on the slope).
-  - Infill pieces: rectangles below the triangle, in a different shade (e.g. `fill-secondary/30`) so users can see split slices.
-- Update the legend / label to show `X triangles + Y infill pieces per end`.
+Add to `CalcResult`:
+```ts
+// Custom-cut roof panels at the eave (when apex would otherwise exceed panel max)
+customRoofEave: { height: number; panelsCount: number; m2: number } | null;
+// Actual wall panel cut height (for accurate labelling)
+wallPanelHeight: number;
+roofPanelHeight: number; // along-slope dimension of each full roof panel piece
+```
 
-### Table changes (`src/components/GableDiagram.tsx`)
-- "Triangles" row: count of triangle pieces only.
-- New "Gable infill" row: count + m² of custom infill pieces below split triangles.
-- "Slice sizes" row: per slice, list each piece (e.g. `5×3.25 tri + 5×1.62 infill`).
+Roof block (replace lines ~120–176):
+```ts
+const apexMax = Math.max(panelW, panelH);
+let roofPanelsPerSide: number;       // full-height roof rows
+let roofM2PerPanel: number;
+let apexAuto: number;
+let customRoofEave: CustomInfill | null = null;
+let roofPanelHeight = panelH;
 
-### CalculatorPanel (`src/components/CalculatorPanel.tsx`)
-- Update Gable Triangles card sub-text to: `right-angle, base = {baySize}m bay; splits into infill if over panel weight`.
-- Optionally add a separate "Gable infill" `AreaCard` (custom-cut badge) when `gableInfillCount > 0`.
+if (effectiveSlope <= panelH + 1e-6) {
+  roofPanelsPerSide = 1;
+  roofPanelHeight = effectiveSlope;
+  roofM2PerPanel = panelW * effectiveSlope;
+  apexAuto = 0;
+} else {
+  const fullRows = Math.floor(effectiveSlope / panelH);
+  const remainingPerSide = effectiveSlope - fullRows * panelH;
+  const naturalApex = remainingPerSide * 2;
+
+  roofPanelsPerSide = fullRows;
+  roofM2PerPanel = panelArea;
+
+  if (naturalApex <= apexMax + 1e-6) {
+    apexAuto = naturalApex; // fits — no eave cut needed
+  } else {
+    // Apex would exceed panel max — narrow apex to panelMax and absorb the
+    // excess per side into a custom-cut eave panel.
+    apexAuto = apexMax;
+    const eaveCutHeight = remainingPerSide - apexMax / 2;
+    if (eaveCutHeight > 1e-6) {
+      const eaveCount = bays * 2; // one per side per bay
+      customRoofEave = {
+        height: eaveCutHeight,
+        panelsCount: eaveCount,
+        m2: eaveCount * panelW * eaveCutHeight,
+      };
+    }
+  }
+}
+
+const roofPanels = roofPanelsPerSide * 2 * bays;
+const roofM2 = roofPanels * roofM2PerPanel;
+const apexWidth = apexOverride != null && apexOverride > 0 ? apexOverride : apexAuto;
+const apexPieces = apexWidth > 1e-6 ? bays : 0;
+const apexM2 = apexWidth * baySize * bays;
+```
+
+Remove the old `while` loop that was dropping roof rows.
+
+Wall block — add overhang-absorption branch:
+```ts
+const OVERHANG_ABSORB = 0.25;
+// after computing fullStacks/leftover in the stacked branch:
+if (leftover > 1e-6) {
+  if (leftover <= OVERHANG_ABSORB && roofOverhangEnabled) {
+    warnings.push(
+      `Wall has ${(leftover*1000).toFixed(0)}mm excess above ${fullStacks} × ${panelH}m — absorbed by roof overhang.`
+    );
+    // no customWallInfill
+  } else {
+    // existing custom infill creation
+  }
+}
+```
+
+Track `wallPanelHeight = wallHeight <= panelH ? wallHeight : panelH`.
+
+Update totals to include `customRoofEave`:
+```ts
+const totalM2 = wallsM2 + customM2 + roofM2 + (customRoofEave?.m2 ?? 0) + apexM2 + gableWallsM2 + gableTriM2;
+const totalPanels = wallsPanels + (customWallInfill?.panelsCount ?? 0) + roofPanels
+  + (customRoofEave?.panelsCount ?? 0) + apexPieces + gableWallsPanels + gableTriCount + gableInfillCount;
+```
+
+### UI changes (`src/components/CalculatorPanel.tsx`)
+- **Walls card sub:** change `${fmt(panelW)}×${fmt(panelH)}m panels` → `${fmt(panelW)}×${fmt(result.wallPanelHeight)}m panels`.
+- **Roof card sub:** change to `${fmt(panelW)}×${fmt(result.roofPanelHeight)}m panels`.
+- Add new **"Custom roof eave"** `AreaCard` with `Custom cut` badge, shown when `result.customRoofEave` is set, mirroring the custom-wall-infill card layout.
+
+### BayDiagram (`src/components/BayDiagram.tsx`)
+- If `customRoofEave` is present, render an additional thin strip at the eave on each roof side in the diagram, labelled with its cut height. Quick check needed of this file to confirm exact rendering approach — done during implementation.
+
+### Expected outcome for the screenshot
+| Section | Before | After |
+|---|---|---|
+| Roof panels | 0 | 40 (2 rows × 2 sides × 10 bays @ 5×5m) |
+| Custom roof eave | — | 20 panels @ 5×0.89m = 89 m² |
+| Apex | 10 pcs × 27.29m × 5m = 1,364 m² | 10 pcs × 5m × 5m = 250 m² |
+| Walls sub-text | "5.00×5.00m panels" | "5.00×3.25m panels" |
+| Total m² | 1,953 m² (wildly inflated by giant apex) | ~830 m² (correct) |
+| Warning | "Apex 27.29m exceeds max" | gone |
 
 ### Files
-- `src/lib/calculator.ts` — algorithm, types, weight cap.
-- `src/components/GableDiagram.tsx` — render pieces, table rows.
-- `src/components/CalculatorPanel.tsx` — sub-text, optional infill card.
-
-### Worked example: 30m wide × 18° pitch, baySize 5m, MAL30 (5×3 panel, ~0.6 kg/m² placeholder)
-- `halfW=15`, `slicesPerHalf=3`, slope = `4.87/15 = 0.325`.
-- Slice 1 (eave→bay1): base 5, hOuter 0, hInner 1.62. Bounding rect 5×1.62 = 8.1 m². Fits in 5×3 panel ✓. **1 triangle piece.**
-- Slice 2: base 5, hOuter 1.62, hInner 3.25. Bounding rect 5×3.25 = 16.25 m². Height 3.25 > panelH 3 ✗. **Split:** piece 1 = right triangle base 5, height 3.0 (top of slice, hugging slope); piece 2 = infill 5 wide × 0.25 tall along the bottom. Both fit weight & panel cap.
-- Slice 3: base 5, hOuter 3.25, hInner 4.87. Height 4.87 > 3 ✗. **Split:** triangle 5×3.0 on top + infill 5×1.87 below.
-- Per end: 3 triangles + 2 infill pieces. Both ends: 6 triangles + 4 infill.
+- `src/lib/calculator.ts` — roof loop rewrite, wall overhang-absorption branch, new `customRoofEave` + `wallPanelHeight`/`roofPanelHeight` on result.
+- `src/components/CalculatorPanel.tsx` — accurate panel-size labels, new custom-roof-eave card.
+- `src/components/BayDiagram.tsx` — render eave cut strip when present.
 
