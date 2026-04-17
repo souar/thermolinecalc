@@ -12,6 +12,15 @@ import { BayDiagram } from "./BayDiagram";
 import { GableDiagram } from "./GableDiagram";
 import { LINING_TYPES as LT } from "@/lib/calculator";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+export interface PricingRow {
+  lining_type: string;
+  cost_per_m2: number;
+  weight_per_m2: number | null;
+  panel_width?: number | null;
+  panel_height?: number | null;
+}
 
 interface Props {
   value: CalcInput;
@@ -22,10 +31,11 @@ interface Props {
     panel_width?: number | null;
     panel_height?: number | null;
   } | null;
+  pricingAll?: PricingRow[];
   rightExtra?: React.ReactNode;
 }
 
-export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props) {
+export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExtra }: Props) {
   const set = <K extends keyof CalcInput>(k: K, v: CalcInput[K]) => onChange({ ...value, [k]: v });
   const num = (s: string) => (s === "" ? 0 : Number(s));
 
