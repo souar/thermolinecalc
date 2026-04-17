@@ -181,12 +181,24 @@ export function CalculatorPanel({ value, onChange, pricing, rightExtra }: Props)
           />
           <AreaCard
             title="Gable triangles"
-            m2={result.gableTriM2}
+            m2={result.gableTriM2 - result.gableInfillM2}
             panels={result.gableTriCount}
-            sub={`right-angle triangles, base = ${fmt(value.baySize, 0)}m bay`}
+            sub={`right-angle, base = ${fmt(value.baySize, 0)}m bay; splits if over panel weight`}
             accent
             customCut
           />
+          {result.gableInfillCount > 0 ? (
+            <AreaCard
+              title="Gable infill"
+              m2={result.gableInfillM2}
+              panels={result.gableInfillCount}
+              sub="custom strip below split triangles"
+              accent
+              customCut
+            />
+          ) : (
+            <EmptyCard title="Gable infill" sub="Not needed — triangles fit standard panels" />
+          )}
         </div>
 
         <Card>
