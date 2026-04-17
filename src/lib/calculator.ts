@@ -203,11 +203,23 @@ export function calculate(input: CalcInput): CalcResult {
   const gableWallsPanels = gableWallsPanelsPerEnd * 2;
   const gableWallsM2 = gableWallsPanels * gablePerPanelArea;
 
-  // ---- Gable triangles (custom, max width = baySize, count forced even) ----
-  let slicesPerEnd = Math.ceil(width / baySize);
-  if (slicesPerEnd % 2 === 1) slicesPerEnd += 1; // split centre triangle in half
-  const gableTriCount = slicesPerEnd * 2;
-  // Actual triangular area: 2 × (½ × width × ridgeHeight)
+  // ---- Gable triangles: right-angle, base aligned to bay widths ----
+  // Per half-gable, slices run eave→apex; tall edge is on the inner side.
+  const halfW = width / 2;
+  const slopePerM = halfW > 0 ? ridgeHeight / halfW : 0;
+  const slicesPerHalf = Math.max(1, Math.ceil(halfW / baySize));
+  const gableTriSlices: Array<{ base: number; height: number }> = [];
+  let xCursor = 0;
+  for (let i = 0; i < slicesPerHalf; i++) {
+    const base = Math.min(baySize, halfW - xCursor);
+    if (base <= 1e-6) break;
+    const heightAtInner = (xCursor + base) * slopePerM;
+    gableTriSlices.push({ base, height: heightAtInner });
+    xCursor += base;
+  }
+  // 2 halves × 2 ends
+  const gableTriCount = gableTriSlices.length * 2 * 2;
+  // Sum of right triangles per half = ½ × halfW × ridgeHeight; ×2 halves ×2 ends = width × ridgeHeight
   const gableTriM2 = width * ridgeHeight;
 
   // ---- Totals ----
