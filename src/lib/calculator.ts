@@ -239,51 +239,39 @@ export function calculate(input: CalcInput): CalcResult {
     if (base <= 1e-6) break;
     const hOuter = xCursor * slopePerM;
     const hInner = (xCursor + base) * slopePerM;
+    const triH = hInner - hOuter; // = base * slopePerM
 
     const pieces: GablePiece[] = [];
-    // Trapezoid area above eave for this strip
-    const trapArea = base * (hInner + hOuter) / 2;
-
-    // Determine max triangle height that fits (panel height + weight cap)
-    // Triangle weight = base * h * wpm2 (cut from base x h rectangle)
-    const maxHByWeight = wpm2 > 0 ? maxPieceWeight / (base * wpm2) : Infinity;
-    const maxTriH = Math.min(panelH, maxHByWeight);
 
     if (base > panelW + 1e-6) {
-      // Width exceeds panel width — flag but still emit single piece (shouldn't happen if baySize ≤ panelW)
       warnings.push(`Gable slice base ${base.toFixed(2)}m exceeds panel width ${panelW}m.`);
     }
 
-    if (hInner <= maxTriH + 1e-6) {
-      // Single triangle covers the whole trapezoid
-      const stockArea = base * hInner; // bounding rect
-      pieces.push({
-        kind: "triangle",
-        base,
-        height: hInner,
-        m2: trapArea, // billed area = actual fabric needed (trapezoid)
-        weight: stockArea * wpm2,
-      });
-    } else {
-      // Split: top right triangle of height = maxTriH, bottom infill rectangle
-      const triH = maxTriH;
-      const triArea = (base * triH) / 2; // triangle area
-      pieces.push({
-        kind: "triangle",
-        base,
-        height: triH,
-        m2: triArea,
-        weight: base * triH * wpm2,
-      });
+    // Triangle: right-angle, hypotenuse on roof beam, vertical leg = triH on inner edge
+    const triArea = (base * triH) / 2;
+    const triWeight = triArea * wpm2;
+    if (triWeight > maxPieceWeight + 1e-6) {
+      warnings.push(
+        `Gable triangle (${fmt(base)}×${fmt(triH)}m) weight ${triWeight.toFixed(1)}kg exceeds panel cap ${maxPieceWeight.toFixed(1)}kg — cannot split while keeping hypotenuse on roof slope.`,
+      );
+    }
+    pieces.push({
+      kind: "triangle",
+      base,
+      height: triH,
+      m2: triArea,
+      weight: triWeight,
+    });
 
-      // Remaining trapezoid below the triangle: height on inner = hInner - triH, on outer = hOuter
-      // Approximate as rectangle of base × (hInner - triH) for billing/cutting purposes
-      let remainingH = hInner - triH;
-      let outerRem = hOuter; // outer edge height of remaining trapezoid base region
-      // For simplicity, infill is a rectangle base × remainingH (covers down to where outer edge = remainingH)
-      // Add infill pieces, splitting horizontally if too tall/heavy
-      while (remainingH > 1e-6) {
-        const sliceH = Math.min(panelH, wpm2 > 0 ? maxPieceWeight / (base * wpm2) : Infinity, remainingH);
+    // Infill rectangle below triangle, full base × hOuter, down to eave
+    if (hOuter > 1e-6) {
+      const totalInfillArea = base * hOuter;
+      const totalInfillWeight = totalInfillArea * wpm2;
+      const splits = wpm2 > 0 && maxPieceWeight > 0
+        ? Math.max(1, Math.ceil(totalInfillWeight / maxPieceWeight))
+        : 1;
+      const sliceH = hOuter / splits;
+      for (let s = 0; s < splits; s++) {
         const m2 = base * sliceH;
         pieces.push({
           kind: "infill",
@@ -292,8 +280,6 @@ export function calculate(input: CalcInput): CalcResult {
           m2,
           weight: m2 * wpm2,
         });
-        remainingH -= sliceH;
-        if (sliceH <= 1e-6) break;
       }
     }
 
