@@ -322,7 +322,8 @@ export function calculate(input: CalcInput): CalcResult {
     roofPanels +
     apexPieces +
     gableWallsPanels +
-    gableTriCount;
+    gableTriCount +
+    gableInfillCount;
 
   const totalWeightKg = totalM2 * (weightPerM2 || liningDef.weightPerM2);
   const totalCost = totalM2 * costPerM2;
@@ -346,6 +347,8 @@ export function calculate(input: CalcInput): CalcResult {
     gableWallsPanels,
     gableTriM2,
     gableTriCount,
+    gableInfillCount,
+    gableInfillM2,
     gableTriSlices,
     totalM2,
     totalPanels,
