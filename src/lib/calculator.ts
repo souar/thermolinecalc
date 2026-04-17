@@ -90,6 +90,24 @@ export interface CalcResult {
   totalWeightKg: number;
   totalCost: number;
 
+  // rafter covers
+  roofRafterCovers: {
+    countRafters: number;
+    flapsPerRafter: number;
+    flapLength: number;
+    customLastFlap: number | null;
+    fullPanels: number;
+    customPanels: number;
+    m2: number;
+    panels: number;
+  } | null;
+  legRafterCovers: {
+    count: number;
+    legLength: number;
+    m2: number;
+    panels: number;
+  } | null;
+
   warnings: string[];
 }
 
