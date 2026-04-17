@@ -36,38 +36,36 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
   for (const slice of gableTriSlices) {
     const x1 = ox + xL; // outer (shorter) edge x
     const x2 = ox + xL + slice.base; // inner (taller) edge x
-    // Top of strip is at eaveY (at ground reference for gable triangle area)
-    // Pieces stack inside the trapezoid, top piece = triangle hugging slope
-    // The triangle's top vertex is at (x2, eaveY - hInner)
-    const topInnerY = eaveY - slice.hInner;
+    const rx1 = ox + width - xL; // mirrored outer
+    const rx2 = ox + width - xL - slice.base; // mirrored inner
 
-    // Walk pieces from top (triangle) downward
-    let cursorY = topInnerY; // top of next piece on inner edge
+    // Triangle sits at top of strip, hypotenuse from outer-top to inner-top of slice.
+    // Vertices: (x1, eaveY - hOuter), (x2, eaveY - hOuter), (x2, eaveY - hInner)
+    const yOuterTop = eaveY - slice.hOuter;
+    const yInnerTop = eaveY - slice.hInner;
+
     for (const p of slice.pieces) {
       if (p.kind === "triangle") {
-        // Right triangle: vertices = (x1, cursorY + p.height) outer-bottom, (x2, cursorY + p.height) inner-bottom, (x2, cursorY) inner-top
-        const yBottom = cursorY + p.height;
         leftPolys.push({
-          pts: `${x1},${yBottom} ${x2},${yBottom} ${x2},${cursorY}`,
+          pts: `${x1},${yOuterTop} ${x2},${yOuterTop} ${x2},${yInnerTop}`,
           kind: "triangle",
         });
-        // Mirror
-        const rx1 = ox + width - xL;
-        const rx2 = ox + width - xL - slice.base;
         rightPolys.push({
-          pts: `${rx1},${yBottom} ${rx2},${yBottom} ${rx2},${cursorY}`,
+          pts: `${rx1},${yOuterTop} ${rx2},${yOuterTop} ${rx2},${yInnerTop}`,
           kind: "triangle",
         });
-        cursorY = yBottom;
-      } else {
-        // Infill rectangle: from (x1, cursorY) to (x2, cursorY + p.height)
+      }
+    }
+
+    // Infill rectangles stack from yOuterTop downward to eaveY (groundY - stackH = eaveY)
+    let cursorY = yOuterTop;
+    for (const p of slice.pieces) {
+      if (p.kind === "infill") {
         const yBottom = cursorY + p.height;
         leftPolys.push({
           pts: `${x1},${cursorY} ${x2},${cursorY} ${x2},${yBottom} ${x1},${yBottom}`,
           kind: "infill",
         });
-        const rx1 = ox + width - xL;
-        const rx2 = ox + width - xL - slice.base;
         rightPolys.push({
           pts: `${rx1},${cursorY} ${rx2},${cursorY} ${rx2},${yBottom} ${rx1},${yBottom}`,
           kind: "infill",
