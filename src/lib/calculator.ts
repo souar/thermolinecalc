@@ -334,10 +334,54 @@ export function calculate(input: CalcInput): CalcResult {
   const gableInfillM2 = infillM2PerEnd * 2;
   const gableTriM2 = gableTriM2Total + gableInfillM2;
 
+  // ---- Rafter covers ----
+  const flapWidth = input.rafterFlapWidth && input.rafterFlapWidth > 0 ? input.rafterFlapWidth : RAFTER_FLAP_DEFAULT;
+  const rafterLen = input.roofRafterLength && input.roofRafterLength > 0 ? input.roofRafterLength : RAFTER_LENGTH_DEFAULT;
+  const raftersPerSide = bays + 1;
+
+  let roofRafterCovers: CalcResult["roofRafterCovers"] = null;
+  if (input.roofRaftersEnabled) {
+    const countRafters = raftersPerSide * 2;
+    const coverLength = slopeLength + RAFTER_OVERLAP;
+    const usable = Math.max(0.001, rafterLen - RAFTER_OVERLAP);
+    const flapsPerRafter = Math.max(1, Math.ceil((coverLength - RAFTER_OVERLAP) / usable));
+    const fullFlapsCovered = (flapsPerRafter - 1) * usable + RAFTER_OVERLAP;
+    const lastRaw = coverLength - fullFlapsCovered + RAFTER_OVERLAP;
+    const customLastFlap = lastRaw > 0 && lastRaw < rafterLen - 1e-3 ? lastRaw : null;
+    const fullFlapsPerRafter = customLastFlap != null ? flapsPerRafter - 1 : flapsPerRafter;
+    const fullPanels = fullFlapsPerRafter * countRafters;
+    const customPanels = customLastFlap != null ? countRafters : 0;
+    const m2 = fullPanels * rafterLen * flapWidth + customPanels * (customLastFlap ?? 0) * flapWidth;
+    roofRafterCovers = {
+      countRafters,
+      flapsPerRafter,
+      flapLength: rafterLen,
+      customLastFlap,
+      fullPanels,
+      customPanels,
+      m2,
+      panels: fullPanels + customPanels,
+    };
+  }
+
+  let legRafterCovers: CalcResult["legRafterCovers"] = null;
+  if (input.legRaftersEnabled) {
+    const count = raftersPerSide * 2;
+    const legLength = eaveHeight + RAFTER_OVERLAP;
+    legRafterCovers = {
+      count,
+      legLength,
+      m2: count * legLength * flapWidth,
+      panels: count,
+    };
+  }
+
   // ---- Totals ----
   const customM2 = customWallInfill?.m2 ?? 0;
   const eaveM2 = customRoofEave?.m2 ?? 0;
-  const totalM2 = wallsM2 + customM2 + roofM2 + eaveM2 + apexM2 + gableWallsM2 + gableTriM2;
+  const rafterM2 = (roofRafterCovers?.m2 ?? 0) + (legRafterCovers?.m2 ?? 0);
+  const rafterPanels = (roofRafterCovers?.panels ?? 0) + (legRafterCovers?.panels ?? 0);
+  const totalM2 = wallsM2 + customM2 + roofM2 + eaveM2 + apexM2 + gableWallsM2 + gableTriM2 + rafterM2;
   const totalPanels =
     wallsPanels +
     (customWallInfill?.panelsCount ?? 0) +
@@ -346,7 +390,8 @@ export function calculate(input: CalcInput): CalcResult {
     apexPieces +
     gableWallsPanels +
     gableTriCount +
-    gableInfillCount;
+    gableInfillCount +
+    rafterPanels;
 
   const totalWeightKg = totalM2 * (weightPerM2 || liningDef.weightPerM2);
   const totalCost = totalM2 * costPerM2;
