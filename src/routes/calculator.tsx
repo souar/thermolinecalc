@@ -54,6 +54,7 @@ function QuickCalc() {
               }
             : null
         }
+        pricingAll={pricingQ.data ?? []}
       />
     </div>
   );
