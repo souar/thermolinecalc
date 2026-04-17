@@ -374,19 +374,94 @@ function Stat({ label, value, unit, highlight }: { label: string; value: string;
   );
 }
 
-function AreaCard({ title, m2, panels, sub, accent, customCut }: { title: string; m2: number; panels: number; sub?: string; accent?: boolean; customCut?: boolean }) {
+interface SectionRow {
+  liningId: string;
+  panels: number | null;
+  panelSize: string;
+  perBay: number | null;
+  perBayLabel?: string;
+  m2: number | null;
+  weight: number | null;
+  cost: number | null;
+  notes: string;
+  muted?: boolean;
+}
+
+function SectionTable({
+  title,
+  description,
+  rows,
+  selectedId,
+}: {
+  title: string;
+  description?: string;
+  rows: SectionRow[];
+  selectedId: string;
+}) {
   return (
-    <Card className={accent ? "border-primary/30" : ""}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">{title}</div>
-          {customCut && <Badge variant="outline" className="text-[10px] uppercase tracking-wider">Custom cut</Badge>}
-        </div>
-        <div className="mt-1 tabular text-3xl font-semibold">
-          {panels}<span className="ml-1 text-xs text-muted-foreground">panels</span>
-        </div>
-        <div className="mt-0.5 tabular text-sm text-muted-foreground">{fmt(m2)} m²</div>
-        {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+          {title}
+        </CardTitle>
+        {description && <CardDescription className="text-xs">{description}</CardDescription>}
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40">
+              <TableHead className="pl-4">Lining</TableHead>
+              <TableHead className="text-right">Panels</TableHead>
+              <TableHead>Panel size</TableHead>
+              <TableHead className="text-right">Per bay</TableHead>
+              <TableHead className="text-right">m²</TableHead>
+              <TableHead className="text-right">Weight (kg)</TableHead>
+              <TableHead className="text-right">Cost</TableHead>
+              <TableHead className="pr-4">Notes</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => {
+              const selected = r.liningId === selectedId;
+              return (
+                <TableRow
+                  key={r.liningId}
+                  className={selected ? "bg-primary/5 hover:bg-primary/10" : ""}
+                >
+                  <TableCell className="pl-4">
+                    <div className="flex items-center gap-2">
+                      <span className={selected ? "font-medium" : ""}>{r.liningId}</span>
+                      {selected && (
+                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                          Selected
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                    {r.panels ?? "—"}
+                  </TableCell>
+                  <TableCell className={`tabular-nums text-xs ${r.muted ? "text-muted-foreground" : ""}`}>
+                    {r.panelSize}
+                  </TableCell>
+                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                    {r.perBayLabel ?? (r.perBay != null ? fmt(r.perBay, 1) : "—")}
+                  </TableCell>
+                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                    {r.m2 != null ? fmt(r.m2) : "—"}
+                  </TableCell>
+                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                    {r.weight != null ? fmt(r.weight, 1) : "—"}
+                  </TableCell>
+                  <TableCell className={`text-right tabular-nums ${r.muted ? "text-muted-foreground" : ""}`}>
+                    {r.cost != null ? fmt(r.cost) : "—"}
+                  </TableCell>
+                  <TableCell className="pr-4 text-xs text-muted-foreground">{r.notes}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
