@@ -256,6 +256,7 @@ export function calculate(input: CalcInput): CalcResult {
     gableWallsPanels,
     gableTriM2,
     gableTriCount,
+    gableTriSlices,
     totalM2,
     totalPanels,
     totalWeightKg,
