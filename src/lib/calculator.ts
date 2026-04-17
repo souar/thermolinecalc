@@ -125,44 +125,43 @@ export function calculate(input: CalcInput): CalcResult {
   const roofOverlap = roofOverhangEnabled ? OVERHANG : 0;
   const effectiveSlope = slopeLength + roofOverlap;
 
-  // Geometric apex = leftover slope after stacking whole roof panels, doubled across ridge
-  const wholeAlongSlope = Math.floor(effectiveSlope / panelH);
-  const geometricApex = Math.max(0, (effectiveSlope - wholeAlongSlope * panelH) * 2);
-
-  // Only the overhang itself contributes to apex absorption.
-  // Tall walls are handled by stacking full panels (see wall section below),
-  // not by growing the apex.
-  const overlapExcess = roofOverlap;
-
-  // Clamp apex at the largest single panel dimension. If geometric apex
-  // exceeds that cap, drop one roof panel row per side — the freed slope
-  // length flows into the apex strip instead.
   const apexMax = Math.max(panelW, panelH);
   let apexAuto: number;
   let roofPanelsPerSide: number;
   let roofM2PerPanel: number;
+  let roofPanelHeight = panelH;
+  let customRoofEave: CustomInfill | null = null;
 
   if (effectiveSlope <= panelH + 1e-6) {
     // Slope fits within a single panel — one cut panel per side per bay
     roofPanelsPerSide = 1;
+    roofPanelHeight = effectiveSlope;
     roofM2PerPanel = panelW * effectiveSlope;
     apexAuto = 0;
   } else {
-    roofPanelsPerSide = wholeAlongSlope;
+    const fullRows = Math.floor(effectiveSlope / panelH);
+    const remainingPerSide = effectiveSlope - fullRows * panelH;
+    const naturalApex = remainingPerSide * 2;
+
+    roofPanelsPerSide = fullRows;
     roofM2PerPanel = panelArea;
-    apexAuto = geometricApex + 2 * overlapExcess;
 
-    while (apexAuto > apexMax && roofPanelsPerSide > 0) {
-      roofPanelsPerSide -= 1;
-      const newGeo = Math.max(0, (effectiveSlope - roofPanelsPerSide * panelH) * 2);
-      apexAuto = newGeo + 2 * overlapExcess;
+    if (naturalApex <= apexMax + 1e-6) {
+      apexAuto = naturalApex;
+    } else {
+      // Apex would exceed panel max — narrow apex to panelMax and absorb the
+      // excess per side into a custom-cut eave panel.
+      apexAuto = apexMax;
+      const eaveCutHeight = remainingPerSide - apexMax / 2;
+      if (eaveCutHeight > 1e-6) {
+        const eaveCount = bays * 2;
+        customRoofEave = {
+          height: eaveCutHeight,
+          panelsCount: eaveCount,
+          m2: eaveCount * panelW * eaveCutHeight,
+        };
+      }
     }
-  }
-
-  if (apexAuto > apexMax) {
-    warnings.push(
-      `Apex ${apexAuto.toFixed(2)}m still exceeds max panel size ${apexMax}m — geometry may need review.`,
-    );
   }
 
   const apexWidth = apexOverride != null && apexOverride > 0 ? apexOverride : apexAuto;
@@ -185,11 +184,13 @@ export function calculate(input: CalcInput): CalcResult {
   let wallsM2: number;
   let customWallInfill: CustomInfill | null = null;
   let fullStacks = 0;
+  let wallPanelHeight = panelH;
 
   if (wallHeight <= panelH + 1e-6) {
     // Wall fits within a single panel — one cut panel per bay-side
     wallStacks = 1;
     wallsPanels = bays * 2;
+    wallPanelHeight = wallHeight;
     wallsM2 = wallsPanels * panelW * wallHeight;
   } else {
     fullStacks = Math.floor(wallHeight / panelH);
@@ -199,15 +200,21 @@ export function calculate(input: CalcInput): CalcResult {
     wallsM2 = wallsPanels * panelArea;
 
     if (leftover > 1e-6) {
-      const infillCount = bays * 2;
-      customWallInfill = {
-        height: leftover,
-        panelsCount: infillCount,
-        m2: infillCount * panelW * leftover,
-      };
-      warnings.push(
-        `Wall height ${wallHeight.toFixed(2)}m exceeds ${fullStacks} × ${panelH}m — added ${infillCount} custom infill panels at ${leftover.toFixed(2)}m tall.`,
-      );
+      if (leftover <= OVERHANG && roofOverhangEnabled) {
+        warnings.push(
+          `Wall has ${(leftover * 1000).toFixed(0)}mm excess above ${fullStacks} × ${panelH}m — absorbed by 250mm roof overhang.`,
+        );
+      } else {
+        const infillCount = bays * 2;
+        customWallInfill = {
+          height: leftover,
+          panelsCount: infillCount,
+          m2: infillCount * panelW * leftover,
+        };
+        warnings.push(
+          `Wall height ${wallHeight.toFixed(2)}m exceeds ${fullStacks} × ${panelH}m — added ${infillCount} custom infill panels at ${leftover.toFixed(2)}m tall.`,
+        );
+      }
     }
   }
 
