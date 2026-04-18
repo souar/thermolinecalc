@@ -125,9 +125,9 @@ interface LegendItem {
 }
 
 /** Top-right colored line legend. */
-export function Legend({ x, y, items, width = 3.5, fontSize = CAD_FONT_XS }: { x: number; y: number; items: LegendItem[]; width?: number; fontSize?: number }) {
-  const pad = 0.2;
-  const lh = 0.32;
+export function Legend({ x, y, items, width = 7, fontSize = CAD_FONT_XS }: { x: number; y: number; items: LegendItem[]; width?: number; fontSize?: number }) {
+  const pad = 0.35;
+  const lh = 0.7;
   const h = pad * 2 + items.length * lh;
   return (
     <g>
@@ -136,8 +136,8 @@ export function Legend({ x, y, items, width = 3.5, fontSize = CAD_FONT_XS }: { x
         const cy = y + pad + i * lh + lh / 2;
         return (
           <g key={i}>
-            <line x1={x + pad} y1={cy} x2={x + pad + 0.55} y2={cy} stroke={it.color} strokeWidth={CAD_STROKE_THICK} />
-            <text x={x + pad + 0.7} y={cy} dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.outline} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
+            <line x1={x + pad} y1={cy} x2={x + pad + 1.3} y2={cy} stroke={it.color} strokeWidth={CAD_STROKE_THICK} />
+            <text x={x + pad + 1.55} y={cy} dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.outline} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
               {it.label}
             </text>
           </g>
