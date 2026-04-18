@@ -170,12 +170,12 @@ export function TitleBlock({ x, y, width = 8, project, dims, date, fontSize = CA
     <g>
       <rect x={x} y={y} width={width} height={h} fill="#fff" stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
       {lines.map((ln, i) => {
-        const cy = y + 0.1 + i * lh + lh / 2;
+        const cy = y + 0.15 + i * lh + lh / 2;
         return (
           <g key={i}>
-            <text x={x + 0.15} y={cy} dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{ln.k}</text>
-            <text x={x + width - 0.15} y={cy} textAnchor="end" dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{ln.v}</text>
-            {i < lines.length - 1 && <line x1={x} y1={y + 0.1 + (i + 1) * lh} x2={x + width} y2={y + 0.1 + (i + 1) * lh} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} opacity={0.3} />}
+            <text x={x + 0.3} y={cy} dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{ln.k}</text>
+            <text x={x + width - 0.3} y={cy} textAnchor="end" dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{ln.v}</text>
+            {i < lines.length - 1 && <line x1={x} y1={y + 0.15 + (i + 1) * lh} x2={x + width} y2={y + 0.15 + (i + 1) * lh} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} opacity={0.3} />}
           </g>
         );
       })}
