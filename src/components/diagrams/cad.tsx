@@ -76,12 +76,17 @@ export function DimLine({ x1, y1, x2, y2, label, offset = 0.18, fontSize = CAD_F
   );
 }
 
-/** Short red diagonal tick mark indicating a panel join. */
-export function TickMark({ x, y, angle = 45, size = 0.18 }: { x: number; y: number; angle?: number; size?: number }) {
+/** Short red diagonal tick mark indicating a panel join, with centre dot. */
+export function TickMark({ x, y, angle = 45, size = 0.45 }: { x: number; y: number; angle?: number; size?: number }) {
   const rad = (angle * Math.PI) / 180;
   const dx = (Math.cos(rad) * size) / 2;
   const dy = (Math.sin(rad) * size) / 2;
-  return <line x1={x - dx} y1={y - dy} x2={x + dx} y2={y + dy} stroke={CAD_COLORS.tick} strokeWidth={CAD_STROKE_THICK} />;
+  return (
+    <g>
+      <line x1={x - dx} y1={y - dy} x2={x + dx} y2={y + dy} stroke={CAD_COLORS.tick} strokeWidth={0.08} strokeLinecap="round" />
+      <circle cx={x} cy={y} r={0.07} fill={CAD_COLORS.tick} />
+    </g>
+  );
 }
 
 interface PartLabelProps {
