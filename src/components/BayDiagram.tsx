@@ -292,21 +292,21 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
 
           {/* Legend top-right */}
           <Legend
-            x={vbW - padR + 0.3}
+            x={rightX + 5.5}
             y={padT + 0.2}
             items={[
               { color: CAD_COLORS.panelEdgeGreen, label: "bottom-edge gable" },
               { color: CAD_COLORS.panelEdgeBlue, label: "top-edge standard" },
               { color: CAD_COLORS.panelEdgePink, label: "bottom-edge standard" },
             ]}
-            width={vbW - (vbW - padR + 0.3) - 0.3}
+            width={vbW - (rightX + 5.5) - 0.3}
           />
 
           {/* Title block bottom-right */}
           <TitleBlock
-            x={vbW - padR + 0.3}
+            x={rightX + 5.5}
             y={vbH - padB + 0.3}
-            width={vbW - (vbW - padR + 0.3) - 0.3}
+            width={vbW - (rightX + 5.5) - 0.3}
             project="Marquee Lining"
             dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
           />
