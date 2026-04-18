@@ -18,10 +18,10 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
   const colsPerEnd = Math.ceil(width / panelW);
   const rowsPerEnd = Math.max(1, wallStacks);
 
-  const padL = 1.5;
-  const padR = 5.5;
-  const padT = 1.0;
-  const padB = 2.5;
+  const padL = 4;
+  const padR = 9;
+  const padT = 2;
+  const padB = 4;
   const vbW = width + padL + padR;
   const vbH = stackH + ridgeHeight + padT + padB;
   const ox = padL;
