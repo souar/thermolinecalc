@@ -125,32 +125,29 @@ export function RoofPlanDiagram({ input, result }: Props) {
             <DimLine
               key={`dimb${b}`}
               x1={bayJunctionXs[b]}
-              y1={oy + planH + 1.0}
+              y1={oy + planH + 1.8}
               x2={bayJunctionXs[b + 1]}
-              y2={oy + planH + 1.0}
+              y2={oy + planH + 1.8}
               label={`${Math.round(baySize * 1000)}`}
-              offset={0.25}
-              fontSize={0.13}
             />
           ))}
           {/* Total length */}
           <DimLine
             x1={ox}
-            y1={oy + planH + 2.0}
+            y1={oy + planH + 3.5}
             x2={ox + planW}
-            y2={oy + planH + 2.0}
+            y2={oy + planH + 3.5}
             label={`${fmt(length)}m`}
-            offset={0.25}
           />
 
           {/* Left side dimensions per band */}
-          <DimLine x1={ox - 1.5} y1={yEaveTop} x2={ox - 1.5} y2={yLowerToUpper} label="A" offset={0.2} fontSize={0.13} />
-          <DimLine x1={ox - 1.5} y1={yLowerToUpper} x2={ox - 1.5} y2={yUpperToApex} label="B" offset={0.2} fontSize={0.13} />
-          <DimLine x1={ox - 1.5} y1={yUpperToApex} x2={ox - 1.5} y2={yApexToUpper} label="C" offset={0.2} fontSize={0.13} />
-          <DimLine x1={ox - 1.5} y1={yApexToUpper} x2={ox - 1.5} y2={yUpperToLower} label="D" offset={0.2} fontSize={0.13} />
-          <DimLine x1={ox - 1.5} y1={yUpperToLower} x2={ox - 1.5} y2={yEaveBot} label="E" offset={0.2} fontSize={0.13} />
+          <DimLine x1={ox - 2.5} y1={yEaveTop} x2={ox - 2.5} y2={yLowerToUpper} label="A" />
+          <DimLine x1={ox - 2.5} y1={yLowerToUpper} x2={ox - 2.5} y2={yUpperToApex} label="B" />
+          <DimLine x1={ox - 2.5} y1={yUpperToApex} x2={ox - 2.5} y2={yApexToUpper} label="C" />
+          <DimLine x1={ox - 2.5} y1={yApexToUpper} x2={ox - 2.5} y2={yUpperToLower} label="D" />
+          <DimLine x1={ox - 2.5} y1={yUpperToLower} x2={ox - 2.5} y2={yEaveBot} label="E" />
           {/* Total width */}
-          <DimLine x1={ox - 2.5} y1={oy} x2={ox - 2.5} y2={oy + planH} label={`${fmt(width)}m`} offset={0.25} />
+          <DimLine x1={ox - 4.5} y1={oy} x2={ox - 4.5} y2={oy + planH} label={`${fmt(width)}m`} />
 
           {/* Legend */}
           <Legend
