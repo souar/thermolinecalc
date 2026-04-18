@@ -272,16 +272,16 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
           <TickMark x={rightX} y={eaveY} angle={135} />
 
           {/* Eave height dimension on the right */}
-          <DimLine x1={rightX + 1.2} y1={groundY} x2={rightX + 1.2} y2={eaveY} label={`${fmt(eaveHeight)}m`} offset={0.25} />
-          <line x1={rightX + 0.2} y1={groundY} x2={rightX + 1.4} y2={groundY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.08,0.08" />
-          <line x1={rightX + 0.2} y1={eaveY} x2={rightX + 1.4} y2={eaveY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.08,0.08" />
+          <DimLine x1={rightX + 2} y1={groundY} x2={rightX + 2} y2={eaveY} label={`${fmt(eaveHeight)}m`} />
+          <line x1={rightX + 0.2} y1={groundY} x2={rightX + 2.2} y2={groundY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.1,0.1" />
+          <line x1={rightX + 0.2} y1={eaveY} x2={rightX + 2.2} y2={eaveY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.1,0.1" />
 
           {/* Total ridge height dimension */}
-          <DimLine x1={rightX + 2.2} y1={groundY} x2={rightX + 2.2} y2={ridgeY} label={`${fmt(result.ridgeHeightTotal)}m`} offset={0.25} />
-          <line x1={rightX + 1.4} y1={ridgeY} x2={rightX + 2.4} y2={ridgeY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.08,0.08" />
+          <DimLine x1={rightX + 4} y1={groundY} x2={rightX + 4} y2={ridgeY} label={`${fmt(result.ridgeHeightTotal)}m`} />
+          <line x1={rightX + 2.2} y1={ridgeY} x2={rightX + 4.2} y2={ridgeY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.1,0.1" />
 
           {/* Width dimension at bottom */}
-          <DimLine x1={leftX} y1={groundY + 1.4} x2={rightX} y2={groundY + 1.4} label={`${fmt(width)}m`} offset={0.25} />
+          <DimLine x1={leftX} y1={groundY + 2.4} x2={rightX} y2={groundY + 2.4} label={`${fmt(width)}m`} />
 
           {/* 250mm seal callouts */}
           <text x={leftX - 3.2} y={groundY - 0.3} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
