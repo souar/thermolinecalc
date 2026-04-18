@@ -156,12 +156,11 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
           {input.legRaftersEnabled && [ox, ox + width].map((x, side) => (
             <PartLabel
               key={`lr${side}`}
-              x={x + (side === 0 ? -0.35 : 0.35)}
+              x={x + (side === 0 ? -0.6 : 0.6)}
               y={(eaveY + groundY) / 2}
               label="rafter flap"
               code={`${input.rafterFlapWidth ?? 0.4}×${fmt(input.eaveHeight)}m`}
               rotate={90}
-              fontSize={0.1}
             />
           ))}
 
