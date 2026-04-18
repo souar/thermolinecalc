@@ -44,8 +44,8 @@ export function DimLine({ x1, y1, x2, y2, label, offset = 0.45, fontSize = CAD_F
   const len = Math.hypot(dx, dy) || 1;
   const nx = -dy / len; // perpendicular
   const ny = dx / len;
-  const ah = 0.12; // arrow length
-  const aw = 0.06; // arrow width
+  const ah = 0.28; // arrow length
+  const aw = 0.14; // arrow width
   // unit along
   const ux = dx / len;
   const uy = dy / len;
