@@ -284,11 +284,11 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
           <DimLine x1={leftX} y1={groundY + 1.4} x2={rightX} y2={groundY + 1.4} label={`${fmt(width)}m`} offset={0.25} />
 
           {/* 250mm seal callouts */}
-          <text x={leftX - 1.5} y={groundY - 0.1} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
-            <tspan x={leftX - 1.5} dy="0">250mm seal</tspan>
-            <tspan x={leftX - 1.5} dy="1.1em">on floor</tspan>
+          <text x={leftX - 3.2} y={groundY - 0.3} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
+            <tspan x={leftX - 3.2} dy="0">250mm seal</tspan>
+            <tspan x={leftX - 3.2} dy="1.1em">on floor</tspan>
           </text>
-          <line x1={leftX - 0.6} y1={groundY - 0.05} x2={leftX - 0.05} y2={groundY - 0.05} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+          <line x1={leftX - 1.2} y1={groundY - 0.1} x2={leftX - 0.05} y2={groundY - 0.1} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
 
           {/* Legend top-right */}
           <Legend
