@@ -16,6 +16,23 @@ export function RoofPlanDiagram({ input, result }: Props) {
   const { length, width, baySize } = input;
   const { bays, slopeLength, apexWidth } = result;
 
+  if (input.lineRoof === false) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Roof plan (top-down)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border border-dashed border-border bg-muted/30 p-8 text-center text-sm text-muted-foreground">
+            Roof not lined — enable "Roof" in the marquee specification to see the roof plan.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const padL = 6;
   const padR = 10;
   const padT = 3;
