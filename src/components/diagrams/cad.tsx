@@ -4,12 +4,12 @@ import { ReactNode } from "react";
 // (typically metres). Stroke widths and font sizes are intentionally tiny so
 // they read as fine line-work when the SVG is scaled up.
 
-export const CAD_STROKE = 0.025;
-export const CAD_STROKE_THIN = 0.015;
-export const CAD_STROKE_THICK = 0.05;
-export const CAD_FONT = 0.22;
-export const CAD_FONT_SM = 0.16;
-export const CAD_FONT_XS = 0.13;
+export const CAD_STROKE = 0.04;
+export const CAD_STROKE_THIN = 0.02;
+export const CAD_STROKE_THICK = 0.08;
+export const CAD_FONT = 0.55;
+export const CAD_FONT_SM = 0.4;
+export const CAD_FONT_XS = 0.32;
 
 export const CAD_COLORS = {
   outline: "#1a1a1a",
@@ -38,14 +38,14 @@ interface DimLineProps {
 }
 
 /** Dimension line with arrowheads at both ends and a centred label. */
-export function DimLine({ x1, y1, x2, y2, label, offset = 0.18, fontSize = CAD_FONT_SM }: DimLineProps) {
+export function DimLine({ x1, y1, x2, y2, label, offset = 0.45, fontSize = CAD_FONT_SM }: DimLineProps) {
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy) || 1;
   const nx = -dy / len; // perpendicular
   const ny = dx / len;
-  const ah = 0.12; // arrow length
-  const aw = 0.06; // arrow width
+  const ah = 0.28; // arrow length
+  const aw = 0.14; // arrow width
   // unit along
   const ux = dx / len;
   const uy = dy / len;
@@ -76,12 +76,17 @@ export function DimLine({ x1, y1, x2, y2, label, offset = 0.18, fontSize = CAD_F
   );
 }
 
-/** Short red diagonal tick mark indicating a panel join. */
-export function TickMark({ x, y, angle = 45, size = 0.18 }: { x: number; y: number; angle?: number; size?: number }) {
+/** Short red diagonal tick mark indicating a panel join, with centre dot. */
+export function TickMark({ x, y, angle = 45, size = 0.45 }: { x: number; y: number; angle?: number; size?: number }) {
   const rad = (angle * Math.PI) / 180;
   const dx = (Math.cos(rad) * size) / 2;
   const dy = (Math.sin(rad) * size) / 2;
-  return <line x1={x - dx} y1={y - dy} x2={x + dx} y2={y + dy} stroke={CAD_COLORS.tick} strokeWidth={CAD_STROKE_THICK} />;
+  return (
+    <g>
+      <line x1={x - dx} y1={y - dy} x2={x + dx} y2={y + dy} stroke={CAD_COLORS.tick} strokeWidth={0.08} strokeLinecap="round" />
+      <circle cx={x} cy={y} r={0.07} fill={CAD_COLORS.tick} />
+    </g>
+  );
 }
 
 interface PartLabelProps {
@@ -120,9 +125,9 @@ interface LegendItem {
 }
 
 /** Top-right colored line legend. */
-export function Legend({ x, y, items, width = 3.5, fontSize = CAD_FONT_XS }: { x: number; y: number; items: LegendItem[]; width?: number; fontSize?: number }) {
-  const pad = 0.2;
-  const lh = 0.32;
+export function Legend({ x, y, items, width = 7, fontSize = CAD_FONT_XS }: { x: number; y: number; items: LegendItem[]; width?: number; fontSize?: number }) {
+  const pad = 0.35;
+  const lh = 0.7;
   const h = pad * 2 + items.length * lh;
   return (
     <g>
@@ -131,8 +136,8 @@ export function Legend({ x, y, items, width = 3.5, fontSize = CAD_FONT_XS }: { x
         const cy = y + pad + i * lh + lh / 2;
         return (
           <g key={i}>
-            <line x1={x + pad} y1={cy} x2={x + pad + 0.55} y2={cy} stroke={it.color} strokeWidth={CAD_STROKE_THICK} />
-            <text x={x + pad + 0.7} y={cy} dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.outline} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
+            <line x1={x + pad} y1={cy} x2={x + pad + 1.3} y2={cy} stroke={it.color} strokeWidth={CAD_STROKE_THICK} />
+            <text x={x + pad + 1.55} y={cy} dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.outline} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
               {it.label}
             </text>
           </g>
@@ -153,24 +158,24 @@ interface TitleBlockProps {
 }
 
 /** Bottom-right project info block. */
-export function TitleBlock({ x, y, width = 4.5, project, dims, date, fontSize = CAD_FONT_XS }: TitleBlockProps) {
-  const lh = 0.32;
+export function TitleBlock({ x, y, width = 8, project, dims, date, fontSize = CAD_FONT_XS }: TitleBlockProps) {
+  const lh = 0.7;
   const lines = [
     { k: "PROJECT", v: project },
     { k: "SIZE", v: dims },
     { k: "DATE", v: date ?? new Date().toISOString().slice(0, 10) },
   ];
-  const h = lines.length * lh + 0.2;
+  const h = lines.length * lh + 0.3;
   return (
     <g>
       <rect x={x} y={y} width={width} height={h} fill="#fff" stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
       {lines.map((ln, i) => {
-        const cy = y + 0.1 + i * lh + lh / 2;
+        const cy = y + 0.15 + i * lh + lh / 2;
         return (
           <g key={i}>
-            <text x={x + 0.15} y={cy} dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{ln.k}</text>
-            <text x={x + width - 0.15} y={cy} textAnchor="end" dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{ln.v}</text>
-            {i < lines.length - 1 && <line x1={x} y1={y + 0.1 + (i + 1) * lh} x2={x + width} y2={y + 0.1 + (i + 1) * lh} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} opacity={0.3} />}
+            <text x={x + 0.3} y={cy} dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{ln.k}</text>
+            <text x={x + width - 0.3} y={cy} textAnchor="end" dominantBaseline="middle" fontSize={fontSize} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{ln.v}</text>
+            {i < lines.length - 1 && <line x1={x} y1={y + 0.15 + (i + 1) * lh} x2={x + width} y2={y + 0.15 + (i + 1) * lh} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} opacity={0.3} />}
           </g>
         );
       })}

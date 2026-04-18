@@ -26,10 +26,10 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
   const roofPanelsPerSide = result.bays > 0 ? result.roofPanels / 2 / result.bays : 0;
 
   const totalH = eaveHeight + ridgeHeight;
-  const padL = 2.5;
-  const padR = 5.5; // room for dimension + legend
-  const padT = 1.0;
-  const padB = 2.5;
+  const padL = 4;
+  const padR = 9; // room for dimension + legend
+  const padT = 2;
+  const padB = 4;
   const vbW = width + padL + padR;
   const vbH = totalH + padT + padB;
   const ox = padL;
@@ -183,13 +183,20 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             );
           })}
 
-          {/* Apex triangle filled */}
+          {/* Apex cap — flush triangular cap sitting on the ridge, sharing corners with rafters */}
           <polygon
             points={`${apexLeftX},${apexBaseY} ${apexRightX},${apexBaseY} ${midX},${ridgeY}`}
             fill={CAD_COLORS.fillApex}
-            stroke={CAD_COLORS.panelEdgePink}
+            stroke={CAD_COLORS.beam}
             strokeWidth={CAD_STROKE}
+            strokeLinejoin="round"
           />
+          {/* Pink edge highlight on the two sloping apex edges */}
+          <line x1={apexLeftX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
+          <line x1={apexRightX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
+          {/* Tick marks at apex-to-rafter joins */}
+          <TickMark x={apexLeftX} y={apexBaseY} angle={45} />
+          <TickMark x={apexRightX} y={apexBaseY} angle={135} />
 
           {/* Wall stack labels (centered between stacks) */}
           {[leftX, rightX].map((x, side) => (
@@ -239,22 +246,23 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             if (customRoofEave) {
               const lx = startX + dir * eaveCutPlan / 2;
               const ly = eaveY - eaveCutRise / 2;
-              labels.push(<PartLabel key={`re${side}`} x={lx + dir * 0.25} y={ly - 0.1} label="roof eave" code={`${fmt(panelW, 0)}×${fmt(customRoofEave.height)}`} fontSize={0.1} />);
+              labels.push(<PartLabel key={`re${side}`} x={lx + dir * 0.4} y={ly - 0.25} label="roof eave" code={`${fmt(panelW, 0)}×${fmt(customRoofEave.height)}`} />);
               cursorPlan += eaveCutPlan;
               cursorRise += eaveCutRise;
             }
             for (let i = 0; i < segCount; i++) {
               const lx = startX + dir * (cursorPlan + segPlan / 2);
               const ly = eaveY - (cursorRise + segRise / 2);
-              labels.push(<PartLabel key={`r${side}-${i}`} x={lx} y={ly - 0.15} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-R-${i + 1}`} fontSize={0.11} />);
+              labels.push(<PartLabel key={`r${side}-${i}`} x={lx} y={ly - 0.3} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-R-${i + 1}`} />);
               cursorPlan += segPlan;
               cursorRise += segRise;
             }
             return <g key={`rl${side}`}>{labels}</g>;
           })}
 
-          {/* Apex part label */}
-          <PartLabel x={midX} y={ridgeY + (apexBaseY - ridgeY) / 2} label="apex fitting piece" code={`${Math.round(apexWidth * 1000)}mm`} fontSize={0.1} />
+          {/* Apex part label with leader line */}
+          <line x1={midX} y1={ridgeY} x2={midX + 1.5} y2={ridgeY - 0.8} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+          <PartLabel x={midX + 1.6} y={ridgeY - 0.95} label="apex fitting piece" code={`${Math.round(apexWidth * 1000)}mm`} anchor="start" />
 
           {/* Tick marks at panel joins */}
           {wallTicks.map((t, i) => <TickMark key={`wt${i}`} x={t.x} y={t.y} angle={45} />)}
