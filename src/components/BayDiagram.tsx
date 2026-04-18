@@ -239,8 +239,8 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             </g>
           ))}
 
-          {/* Roof panel labels (centered along each slope segment) */}
-          {[0, 1].map((side) => {
+          {/* Roof panel labels (centered along each slope segment) — only when roof is lined */}
+          {input.lineRoof !== false && [0, 1].map((side) => {
             const labels: ReactElement[] = [];
             const dir = side === 0 ? 1 : -1;
             const startX = side === 0 ? leftX : rightX;
@@ -264,13 +264,17 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             return <g key={`rl${side}`}>{labels}</g>;
           })}
 
-          {/* Apex part label with leader line */}
-          <line x1={midX} y1={ridgeY} x2={midX + 1.5} y2={ridgeY - 0.8} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
-          <PartLabel x={midX + 1.6} y={ridgeY - 0.95} label="apex fitting piece" code={`${Math.round(apexWidth * 1000)}mm`} anchor="start" />
+          {/* Apex part label with leader line — only when apex is lined */}
+          {input.lineRoof !== false && input.lineApex !== false && apexWidth > 1e-6 && (
+            <>
+              <line x1={midX} y1={ridgeY} x2={midX + 1.5} y2={ridgeY - 0.8} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+              <PartLabel x={midX + 1.6} y={ridgeY - 0.95} label="apex fitting piece" code={`${Math.round(apexWidth * 1000)}mm`} anchor="start" />
+            </>
+          )}
 
           {/* Tick marks at panel joins */}
-          {wallTicks.map((t, i) => <TickMark key={`wt${i}`} x={t.x} y={t.y} angle={45} />)}
-          {roofTicks.map((t, i) => <TickMark key={`rt${i}`} x={t.x} y={t.y} angle={t.angle} />)}
+          {input.lineWalls !== false && wallTicks.map((t, i) => <TickMark key={`wt${i}`} x={t.x} y={t.y} angle={45} />)}
+          {input.lineRoof !== false && roofTicks.map((t, i) => <TickMark key={`rt${i}`} x={t.x} y={t.y} angle={t.angle} />)}
           {/* Eave junction ticks */}
           <TickMark x={leftX} y={eaveY} angle={45} />
           <TickMark x={rightX} y={eaveY} angle={135} />
