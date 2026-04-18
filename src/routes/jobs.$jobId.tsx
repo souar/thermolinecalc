@@ -40,6 +40,19 @@ function JobPage() {
   });
 
   const [input, setInput] = useState<CalcInput>(DEFAULT_INPUT);
+  const [install, setInstall] = useState<InstallInput>(DEFAULT_INSTALL_INPUT);
+
+  const installKey = `marquee.job.install.${jobId}`;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem(installKey);
+    if (raw) {
+      try { setInstall({ ...DEFAULT_INSTALL_INPUT, ...JSON.parse(raw) }); } catch { /* noop */ }
+    }
+  }, [installKey]);
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(installKey, JSON.stringify(install));
+  }, [install, installKey]);
 
   // Hydrate from latest spec on load
   useEffect(() => {
