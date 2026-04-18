@@ -425,11 +425,11 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
         <RoofPlanDiagram input={calcInput} result={result} />
       </TabsContent>
 
-      <TabsContent value="labour">
-        <ComingSoon
-          icon={<HardHat className="h-8 w-8" />}
-          title="Install & Labour"
-          description="Estimate install time and equipment requirements based on team size, marquee dimensions, and lining complexity. Will include rigging crew sizing, scaffold/MEWP needs, and a per-stage time breakdown."
+      <TabsContent value="labour" className="space-y-6">
+        <InstallPanel
+          result={result}
+          value={install ?? DEFAULT_INSTALL_INPUT}
+          onChange={onInstallChange ?? (() => {})}
         />
       </TabsContent>
 
