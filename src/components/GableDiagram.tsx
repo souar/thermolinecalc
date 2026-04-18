@@ -171,10 +171,10 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
           </text>
 
           {/* Eave height dimension */}
-          <DimLine x1={ox + width + 1.2} y1={groundY} x2={ox + width + 1.2} y2={eaveY} label={`${fmt(input.eaveHeight)}m`} offset={0.25} />
-          <DimLine x1={ox + width + 2.2} y1={groundY} x2={ox + width + 2.2} y2={ridgeY} label={`${fmt(result.ridgeHeightTotal)}m`} offset={0.25} />
+          <DimLine x1={ox + width + 2} y1={groundY} x2={ox + width + 2} y2={eaveY} label={`${fmt(input.eaveHeight)}m`} />
+          <DimLine x1={ox + width + 4} y1={groundY} x2={ox + width + 4} y2={ridgeY} label={`${fmt(result.ridgeHeightTotal)}m`} />
           {/* Width dim */}
-          <DimLine x1={ox} y1={groundY + 1.4} x2={ox + width} y2={groundY + 1.4} label={`${fmt(width)}m`} offset={0.25} />
+          <DimLine x1={ox} y1={groundY + 2.4} x2={ox + width} y2={groundY + 2.4} label={`${fmt(width)}m`} />
 
           {/* Legend */}
           <Legend
