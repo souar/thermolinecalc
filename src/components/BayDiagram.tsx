@@ -246,7 +246,7 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             if (customRoofEave) {
               const lx = startX + dir * eaveCutPlan / 2;
               const ly = eaveY - eaveCutRise / 2;
-              labels.push(<PartLabel key={`re${side}`} x={lx + dir * 0.25} y={ly - 0.1} label="roof eave" code={`${fmt(panelW, 0)}×${fmt(customRoofEave.height)}`} fontSize={0.1} />);
+              labels.push(<PartLabel key={`re${side}`} x={lx + dir * 0.4} y={ly - 0.25} label="roof eave" code={`${fmt(panelW, 0)}×${fmt(customRoofEave.height)}`} />);
               cursorPlan += eaveCutPlan;
               cursorRise += eaveCutRise;
             }
