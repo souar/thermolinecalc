@@ -178,21 +178,21 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
 
           {/* Legend */}
           <Legend
-            x={vbW - padR + 0.3}
+            x={ox + width + 5}
             y={padT + 0.2}
             items={[
               { color: CAD_COLORS.panelEdgeGreen, label: "gable edge" },
               { color: CAD_COLORS.panelEdgeBlue, label: "infill edge" },
               { color: CAD_COLORS.panelEdgePink, label: "ridge edge" },
             ]}
-            width={vbW - (vbW - padR + 0.3) - 0.3}
+            width={vbW - (ox + width + 5) - 0.3}
           />
 
           {/* Title block */}
           <TitleBlock
-            x={vbW - padR + 0.3}
+            x={ox + width + 5}
             y={vbH - padB + 0.3}
-            width={vbW - (vbW - padR + 0.3) - 0.3}
+            width={vbW - (ox + width + 5) - 0.3}
             project="Marquee Gable"
             dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
           />
