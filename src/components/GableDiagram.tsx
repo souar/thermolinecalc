@@ -144,7 +144,7 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
           {[...leftPolys, ...rightPolys].map((p, i) => (
             <g key={`gp${i}`}>
               <polygon points={p.pts} fill={p.kind === "triangle" ? CAD_COLORS.fillGable : CAD_COLORS.fillUpperRoof} stroke={p.kind === "triangle" ? CAD_COLORS.panelEdgeGreen : CAD_COLORS.panelEdgeBlue} strokeWidth={CAD_STROKE_THIN} />
-              <PartLabel x={p.cx} y={p.cy} label={p.label} code={p.kind === "triangle" ? "MAL-G" : "MAL-INF"} fontSize={0.1} />
+              <PartLabel x={p.cx} y={p.cy} label={p.label} code={p.kind === "triangle" ? "MAL-G" : "MAL-INF"} />
             </g>
           ))}
 
