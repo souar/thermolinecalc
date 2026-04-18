@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalculatorPanel } from "@/components/CalculatorPanel";
-import { CalcInput, DEFAULT_INPUT, calculate } from "@/lib/calculator";
+import { CalcInput, DEFAULT_INPUT, DEFAULT_INSTALL_INPUT, InstallInput, calculate } from "@/lib/calculator";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, Save } from "lucide-react";
 import { getUsername } from "@/lib/username";
@@ -40,6 +40,19 @@ function JobPage() {
   });
 
   const [input, setInput] = useState<CalcInput>(DEFAULT_INPUT);
+  const [install, setInstall] = useState<InstallInput>(DEFAULT_INSTALL_INPUT);
+
+  const installKey = `marquee.job.install.${jobId}`;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem(installKey);
+    if (raw) {
+      try { setInstall({ ...DEFAULT_INSTALL_INPUT, ...JSON.parse(raw) }); } catch { /* noop */ }
+    }
+  }, [installKey]);
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(installKey, JSON.stringify(install));
+  }, [install, installKey]);
 
   // Hydrate from latest spec on load
   useEffect(() => {
@@ -147,6 +160,8 @@ function JobPage() {
       <CalculatorPanel
         value={input}
         onChange={setInput}
+        install={install}
+        onInstallChange={setInstall}
         pricing={
           linePrice
             ? {

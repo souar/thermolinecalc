@@ -35,6 +35,36 @@ export type Database = {
         }
         Relationships: []
       }
+      install_time_defaults: {
+        Row: {
+          id: string
+          label: string
+          minutes_per_panel: number
+          section_key: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          label: string
+          minutes_per_panel?: number
+          section_key: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          label?: string
+          minutes_per_panel?: number
+          section_key?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       jobs: {
         Row: {
           created_at: string

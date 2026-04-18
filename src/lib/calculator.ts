@@ -451,3 +451,118 @@ export function fmt(n: number, dp = 2): string {
   if (!isFinite(n)) return "—";
   return n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
 }
+
+// ============================================================================
+// Install time
+// ============================================================================
+
+export type InstallSectionKey =
+  | "roof"
+  | "walls"
+  | "gable_walls"
+  | "gable_tri"
+  | "apex"
+  | "eave"
+  | "wall_infill"
+  | "rafters";
+
+export const INSTALL_SECTIONS: { key: InstallSectionKey; label: string; defaultMin: number }[] = [
+  { key: "roof",        label: "Roof panels",                defaultMin: 60 },
+  { key: "walls",       label: "Wall panels",                defaultMin: 45 },
+  { key: "gable_walls", label: "Gable wall panels",          defaultMin: 45 },
+  { key: "gable_tri",   label: "Gable triangles & infills",  defaultMin: 60 },
+  { key: "apex",        label: "Apex infill",                defaultMin: 45 },
+  { key: "eave",        label: "Eave infill",                defaultMin: 45 },
+  { key: "wall_infill", label: "Custom wall infill",         defaultMin: 45 },
+  { key: "rafters",     label: "Rafter covers",              defaultMin: 20 },
+];
+
+export interface InstallInput {
+  teams: number;
+  peoplePerTeam: number;
+  hoursPerDay: number;
+  /** When false, sections are summed but cannot be parallelised across teams beyond a single section at a time. */
+  parallelSections: boolean;
+  /** Minutes per panel for each section. Falls back to defaults. */
+  minutesPerPanel: Partial<Record<InstallSectionKey, number>>;
+}
+
+export interface InstallSectionResult {
+  key: InstallSectionKey;
+  label: string;
+  panels: number;
+  minutesPerPanel: number;
+  hours: number;
+  days: number;
+}
+
+export interface InstallResult {
+  sections: InstallSectionResult[];
+  totalPanels: number;
+  totalHours: number;
+  totalDays: number;
+  personHours: number;
+  panelsPerDayPerTeam: number;
+}
+
+export const MIN_PEOPLE_PER_TEAM = 6;
+
+export const DEFAULT_INSTALL_INPUT: InstallInput = {
+  teams: 1,
+  peoplePerTeam: MIN_PEOPLE_PER_TEAM,
+  hoursPerDay: 8,
+  parallelSections: true,
+  minutesPerPanel: {},
+};
+
+/** Map a CalcResult into panel counts per install section. */
+export function panelsBySection(result: CalcResult): Record<InstallSectionKey, number> {
+  const rafterPanels =
+    (result.roofRafterCovers?.panels ?? 0) + (result.legRafterCovers?.panels ?? 0);
+  return {
+    roof:        result.roofPanels,
+    walls:       result.wallsPanels,
+    gable_walls: result.gableWallsPanels,
+    gable_tri:   result.gableTriCount + result.gableInfillCount,
+    apex:        result.apexPieces,
+    eave:        result.customRoofEave?.panelsCount ?? 0,
+    wall_infill: result.customWallInfill?.panelsCount ?? 0,
+    rafters:     rafterPanels,
+  };
+}
+
+export function calculateInstall(result: CalcResult, input: InstallInput): InstallResult {
+  const teams = Math.max(1, Math.floor(input.teams || 1));
+  const people = Math.max(MIN_PEOPLE_PER_TEAM, Math.floor(input.peoplePerTeam || MIN_PEOPLE_PER_TEAM));
+  const hpd = Math.max(0.1, input.hoursPerDay || 8);
+  const counts = panelsBySection(result);
+
+  const sections: InstallSectionResult[] = INSTALL_SECTIONS.map((s) => {
+    const mpp = input.minutesPerPanel[s.key] ?? s.defaultMin;
+    const panels = counts[s.key];
+    const hours = (panels * mpp) / 60;
+    // When parallelSections is true, teams can split across sections — section days = hours / (hpd * teams).
+    // When false, only one section at a time → section days = hours / hpd (still divided by teams within a section).
+    const days = input.parallelSections
+      ? hours / (hpd * teams)
+      : hours / (hpd * teams);
+    return { key: s.key, label: s.label, panels, minutesPerPanel: mpp, hours, days };
+  });
+
+  const totalPanels = sections.reduce((a, s) => a + s.panels, 0);
+  const totalHours = sections.reduce((a, s) => a + s.hours, 0);
+  // With parallel, total = sum hours / (hpd*teams). Without parallel, sections run back-to-back → same arithmetic
+  // because team can only attack one section at a time anyway. Toggle currently informational.
+  const totalDays = totalHours / (hpd * teams);
+  const personHours = totalHours * people * teams;
+  const panelsPerDayPerTeam = totalDays > 0 ? totalPanels / totalDays / teams : 0;
+
+  return {
+    sections,
+    totalPanels,
+    totalHours,
+    totalDays,
+    personHours,
+    panelsPerDayPerTeam,
+  };
+}

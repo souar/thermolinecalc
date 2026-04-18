@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { CalcInput, CalcResult, LINING_TYPES, calculate, fmt } from "@/lib/calculator";
+import {
+  CalcInput,
+  CalcResult,
+  DEFAULT_INSTALL_INPUT,
+  InstallInput,
+  LINING_TYPES,
+  calculate,
+  fmt,
+} from "@/lib/calculator";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +19,7 @@ import { AlertTriangle, HardHat, Factory, LayoutDashboard, Ruler } from "lucide-
 import { BayDiagram } from "./BayDiagram";
 import { GableDiagram } from "./GableDiagram";
 import { RoofPlanDiagram } from "./RoofPlanDiagram";
+import { InstallPanel } from "./InstallPanel";
 import { LINING_TYPES as LT } from "@/lib/calculator";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -34,9 +43,11 @@ interface Props {
   } | null;
   pricingAll?: PricingRow[];
   rightExtra?: React.ReactNode;
+  install?: InstallInput;
+  onInstallChange?: (v: InstallInput) => void;
 }
 
-export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExtra }: Props) {
+export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExtra, install, onInstallChange }: Props) {
   const set = <K extends keyof CalcInput>(k: K, v: CalcInput[K]) => onChange({ ...value, [k]: v });
   const num = (s: string) => (s === "" ? 0 : Number(s));
 
@@ -414,11 +425,11 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
         <RoofPlanDiagram input={calcInput} result={result} />
       </TabsContent>
 
-      <TabsContent value="labour">
-        <ComingSoon
-          icon={<HardHat className="h-8 w-8" />}
-          title="Install & Labour"
-          description="Estimate install time and equipment requirements based on team size, marquee dimensions, and lining complexity. Will include rigging crew sizing, scaffold/MEWP needs, and a per-stage time breakdown."
+      <TabsContent value="labour" className="space-y-6">
+        <InstallPanel
+          result={result}
+          value={install ?? DEFAULT_INSTALL_INPUT}
+          onChange={onInstallChange ?? (() => {})}
         />
       </TabsContent>
 
