@@ -288,6 +288,66 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
               </div>
 
               <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Sections to line
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  <ToggleRow
+                    label="Roof"
+                    checked={value.lineRoof !== false}
+                    onChange={(v) => {
+                      const next: CalcInput = { ...value, lineRoof: v };
+                      if (!v) {
+                        next.lineApex = false;
+                        next.roofRaftersEnabled = false;
+                      }
+                      onChange(next);
+                    }}
+                  />
+                  {value.lineRoof !== false && (
+                    <ToggleRow
+                      label="Apex infill"
+                      checked={value.lineApex !== false}
+                      onChange={(v) => set("lineApex", v)}
+                    />
+                  )}
+                  <ToggleRow
+                    label="Walls (long sides)"
+                    checked={value.lineWalls !== false}
+                    onChange={(v) => {
+                      const next: CalcInput = { ...value, lineWalls: v };
+                      if (!v) next.legRaftersEnabled = false;
+                      onChange(next);
+                    }}
+                  />
+                  <ToggleRow
+                    label="Gable walls"
+                    checked={value.lineGableWalls !== false}
+                    onChange={(v) => set("lineGableWalls", v)}
+                  />
+                  <ToggleRow
+                    label="Gable triangles & infills"
+                    checked={value.lineGableTriangles !== false}
+                    onChange={(v) => set("lineGableTriangles", v)}
+                  />
+                  {value.lineRoof !== false && (
+                    <ToggleRow
+                      label="Roof rafter covers"
+                      checked={!!value.roofRaftersEnabled}
+                      onChange={(v) => set("roofRaftersEnabled", v)}
+                    />
+                  )}
+                  {value.lineWalls !== false && (
+                    <ToggleRow
+                      label="Leg rafter covers"
+                      checked={!!value.legRaftersEnabled}
+                      onChange={(v) => set("legRaftersEnabled", v)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
                 <ToggleRow
                   label="Roof drops 250mm past eave (seal to wall)"
                   checked={value.roofOverhangEnabled}
@@ -297,16 +357,6 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
                   label="Walls have 250mm floor seal excess"
                   checked={value.wallFloorSealEnabled}
                   onChange={(v) => set("wallFloorSealEnabled", v)}
-                />
-                <ToggleRow
-                  label="Roof rafter covers"
-                  checked={!!value.roofRaftersEnabled}
-                  onChange={(v) => set("roofRaftersEnabled", v)}
-                />
-                <ToggleRow
-                  label="Leg rafter covers"
-                  checked={!!value.legRaftersEnabled}
-                  onChange={(v) => set("legRaftersEnabled", v)}
                 />
                 {(value.roofRaftersEnabled || value.legRaftersEnabled) && (
                   <div className="grid grid-cols-2 gap-3 pt-1">
