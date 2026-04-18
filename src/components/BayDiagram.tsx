@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { CalcInput, CalcResult, fmt } from "@/lib/calculator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -229,7 +230,7 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
 
           {/* Roof panel labels (centered along each slope segment) */}
           {[0, 1].map((side) => {
-            const labels: JSX.Element[] = [];
+            const labels: ReactElement[] = [];
             const dir = side === 0 ? 1 : -1;
             const startX = side === 0 ? leftX : rightX;
             const segCount = roofPanelsPerSide;
