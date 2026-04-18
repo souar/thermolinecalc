@@ -18,10 +18,10 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
   const colsPerEnd = Math.ceil(width / panelW);
   const rowsPerEnd = Math.max(1, wallStacks);
 
-  const padL = 1.5;
-  const padR = 5.5;
-  const padT = 1.0;
-  const padB = 2.5;
+  const padL = 4;
+  const padR = 13;
+  const padT = 2;
+  const padB = 4;
   const vbW = width + padL + padR;
   const vbH = stackH + ridgeHeight + padT + padB;
   const ox = padL;
@@ -109,7 +109,7 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
             Array.from({ length: rowsPerEnd }).map((_, r) => {
               const x = ox + (c + 0.5) * (width / colsPerEnd);
               const y = eaveY + (r + 0.5) * (stackH / rowsPerEnd);
-              return <PartLabel key={`p${c}-${r}`} x={x} y={y} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-W${c + 1}-${r + 1}`} fontSize={0.11} />;
+              return <PartLabel key={`p${c}-${r}`} x={x} y={y} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-W${c + 1}-${r + 1}`} />;
             })
           )}
           {/* Wall join ticks */}
@@ -144,56 +144,55 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
           {[...leftPolys, ...rightPolys].map((p, i) => (
             <g key={`gp${i}`}>
               <polygon points={p.pts} fill={p.kind === "triangle" ? CAD_COLORS.fillGable : CAD_COLORS.fillUpperRoof} stroke={p.kind === "triangle" ? CAD_COLORS.panelEdgeGreen : CAD_COLORS.panelEdgeBlue} strokeWidth={CAD_STROKE_THIN} />
-              <PartLabel x={p.cx} y={p.cy} label={p.label} code={p.kind === "triangle" ? "MAL-G" : "MAL-INF"} fontSize={0.1} />
+              <PartLabel x={p.cx} y={p.cy} label={p.label} code={p.kind === "triangle" ? "MAL-G" : "MAL-INF"} />
             </g>
           ))}
 
           {/* Additional strut callout near apex */}
-          <text x={midX + 0.6} y={ridgeY + 0.3} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} fontStyle="italic" style={{ fontFamily: "ui-serif, Georgia, serif" }}>additional strut</text>
-          <line x1={midX + 0.55} y1={ridgeY + 0.3} x2={midX + 0.05} y2={ridgeY + 0.15} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+          <text x={midX + 1.2} y={ridgeY + 0.6} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} fontStyle="italic" style={{ fontFamily: "ui-serif, Georgia, serif" }}>additional strut</text>
+          <line x1={midX + 1.1} y1={ridgeY + 0.55} x2={midX + 0.05} y2={ridgeY + 0.2} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
 
           {/* Rafter flap labels on legs (if enabled) */}
           {input.legRaftersEnabled && [ox, ox + width].map((x, side) => (
             <PartLabel
               key={`lr${side}`}
-              x={x + (side === 0 ? -0.35 : 0.35)}
+              x={x + (side === 0 ? -0.6 : 0.6)}
               y={(eaveY + groundY) / 2}
               label="rafter flap"
               code={`${input.rafterFlapWidth ?? 0.4}×${fmt(input.eaveHeight)}m`}
               rotate={90}
-              fontSize={0.1}
             />
           ))}
 
           {/* 250mm seal callout */}
-          <text x={ox - 1.0} y={groundY - 0.15} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
-            <tspan x={ox - 1.0} dy="0">250mm</tspan>
-            <tspan x={ox - 1.0} dy="1.1em">floor seal</tspan>
+          <text x={ox - 3} y={groundY - 0.3} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
+            <tspan x={ox - 3} dy="0">250mm</tspan>
+            <tspan x={ox - 3} dy="1.1em">floor seal</tspan>
           </text>
 
           {/* Eave height dimension */}
-          <DimLine x1={ox + width + 1.2} y1={groundY} x2={ox + width + 1.2} y2={eaveY} label={`${fmt(input.eaveHeight)}m`} offset={0.25} />
-          <DimLine x1={ox + width + 2.2} y1={groundY} x2={ox + width + 2.2} y2={ridgeY} label={`${fmt(result.ridgeHeightTotal)}m`} offset={0.25} />
+          <DimLine x1={ox + width + 2} y1={groundY} x2={ox + width + 2} y2={eaveY} label={`${fmt(input.eaveHeight)}m`} />
+          <DimLine x1={ox + width + 4} y1={groundY} x2={ox + width + 4} y2={ridgeY} label={`${fmt(result.ridgeHeightTotal)}m`} />
           {/* Width dim */}
-          <DimLine x1={ox} y1={groundY + 1.4} x2={ox + width} y2={groundY + 1.4} label={`${fmt(width)}m`} offset={0.25} />
+          <DimLine x1={ox} y1={groundY + 2.4} x2={ox + width} y2={groundY + 2.4} label={`${fmt(width)}m`} />
 
           {/* Legend */}
           <Legend
-            x={vbW - padR + 0.3}
+            x={ox + width + 5}
             y={padT + 0.2}
             items={[
               { color: CAD_COLORS.panelEdgeGreen, label: "gable edge" },
               { color: CAD_COLORS.panelEdgeBlue, label: "infill edge" },
               { color: CAD_COLORS.panelEdgePink, label: "ridge edge" },
             ]}
-            width={vbW - (vbW - padR + 0.3) - 0.3}
+            width={vbW - (ox + width + 5) - 0.3}
           />
 
           {/* Title block */}
           <TitleBlock
-            x={vbW - padR + 0.3}
+            x={ox + width + 5}
             y={vbH - padB + 0.3}
-            width={vbW - (vbW - padR + 0.3) - 0.3}
+            width={vbW - (ox + width + 5) - 0.3}
             project="Marquee Gable"
             dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
           />

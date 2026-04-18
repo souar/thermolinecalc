@@ -1,6 +1,6 @@
 import { CalcInput, CalcResult, fmt } from "@/lib/calculator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_FONT_XS, DimLine, Legend, TitleBlock } from "./diagrams/cad";
+import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_FONT_SM, DimLine, Legend, TitleBlock } from "./diagrams/cad";
 
 interface Props {
   input: CalcInput;
@@ -16,10 +16,10 @@ export function RoofPlanDiagram({ input, result }: Props) {
   const { length, width, baySize } = input;
   const { bays, slopeLength, apexWidth } = result;
 
-  const padL = 3.0;
-  const padR = 5.0;
-  const padT = 1.5;
-  const padB = 3.0;
+  const padL = 6;
+  const padR = 10;
+  const padT = 3;
+  const padB = 5;
 
   // Use length × width directly as svg coords (metres).
   const planW = length;
@@ -106,18 +106,18 @@ export function RoofPlanDiagram({ input, result }: Props) {
           {bayJunctionXs.map((x, i) => {
             const tag = i === 0 ? "RB" : i === bayJunctionXs.length - 1 ? "RB" : i === 1 || i === bayJunctionXs.length - 2 ? "VB" : "NB";
             return (
-              <text key={`tag${i}`} x={x} y={oy - 0.3} textAnchor="middle" fontSize={CAD_FONT_XS} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{tag}</text>
+              <text key={`tag${i}`} x={x} y={oy - 0.7} textAnchor="middle" fontSize={CAD_FONT_SM} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{tag}</text>
             );
           })}
 
           {/* Bay numbers (bottom inside) */}
           {bayJunctionXs.map((x, i) => (
-            <text key={`bn${i}`} x={x} y={oy + planH + 0.4} textAnchor="middle" fontSize={CAD_FONT_XS} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-monospace, monospace" }}>{i + 1}</text>
+            <text key={`bn${i}`} x={x} y={oy + planH + 0.8} textAnchor="middle" fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-monospace, monospace" }}>{i + 1}</text>
           ))}
 
           {/* Band letters (left) */}
           {bandLetters.map((l, i) => (
-            <text key={`bl${i}`} x={ox - 0.4} y={bandYs[i]} textAnchor="middle" dominantBaseline="middle" fontSize={CAD_FONT_XS} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{l}</text>
+            <text key={`bl${i}`} x={ox - 1} y={bandYs[i]} textAnchor="middle" dominantBaseline="middle" fontSize={CAD_FONT_SM} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{l}</text>
           ))}
 
           {/* Bottom dimension lines (per-bay) */}
@@ -125,32 +125,29 @@ export function RoofPlanDiagram({ input, result }: Props) {
             <DimLine
               key={`dimb${b}`}
               x1={bayJunctionXs[b]}
-              y1={oy + planH + 1.0}
+              y1={oy + planH + 1.8}
               x2={bayJunctionXs[b + 1]}
-              y2={oy + planH + 1.0}
+              y2={oy + planH + 1.8}
               label={`${Math.round(baySize * 1000)}`}
-              offset={0.25}
-              fontSize={0.13}
             />
           ))}
           {/* Total length */}
           <DimLine
             x1={ox}
-            y1={oy + planH + 2.0}
+            y1={oy + planH + 3.5}
             x2={ox + planW}
-            y2={oy + planH + 2.0}
+            y2={oy + planH + 3.5}
             label={`${fmt(length)}m`}
-            offset={0.25}
           />
 
           {/* Left side dimensions per band */}
-          <DimLine x1={ox - 1.5} y1={yEaveTop} x2={ox - 1.5} y2={yLowerToUpper} label="A" offset={0.2} fontSize={0.13} />
-          <DimLine x1={ox - 1.5} y1={yLowerToUpper} x2={ox - 1.5} y2={yUpperToApex} label="B" offset={0.2} fontSize={0.13} />
-          <DimLine x1={ox - 1.5} y1={yUpperToApex} x2={ox - 1.5} y2={yApexToUpper} label="C" offset={0.2} fontSize={0.13} />
-          <DimLine x1={ox - 1.5} y1={yApexToUpper} x2={ox - 1.5} y2={yUpperToLower} label="D" offset={0.2} fontSize={0.13} />
-          <DimLine x1={ox - 1.5} y1={yUpperToLower} x2={ox - 1.5} y2={yEaveBot} label="E" offset={0.2} fontSize={0.13} />
+          <DimLine x1={ox - 2.5} y1={yEaveTop} x2={ox - 2.5} y2={yLowerToUpper} label="A" />
+          <DimLine x1={ox - 2.5} y1={yLowerToUpper} x2={ox - 2.5} y2={yUpperToApex} label="B" />
+          <DimLine x1={ox - 2.5} y1={yUpperToApex} x2={ox - 2.5} y2={yApexToUpper} label="C" />
+          <DimLine x1={ox - 2.5} y1={yApexToUpper} x2={ox - 2.5} y2={yUpperToLower} label="D" />
+          <DimLine x1={ox - 2.5} y1={yUpperToLower} x2={ox - 2.5} y2={yEaveBot} label="E" />
           {/* Total width */}
-          <DimLine x1={ox - 2.5} y1={oy} x2={ox - 2.5} y2={oy + planH} label={`${fmt(width)}m`} offset={0.25} />
+          <DimLine x1={ox - 4.5} y1={oy} x2={ox - 4.5} y2={oy + planH} label={`${fmt(width)}m`} />
 
           {/* Legend */}
           <Legend

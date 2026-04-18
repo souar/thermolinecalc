@@ -27,9 +27,9 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
 
   const totalH = eaveHeight + ridgeHeight;
   const padL = 4;
-  const padR = 9; // room for dimension + legend
+  const padR = 13; // dim lines + legend
   const padT = 2;
-  const padB = 4;
+  const padB = 4.5;
   const vbW = width + padL + padR;
   const vbH = totalH + padT + padB;
   const ox = padL;
@@ -272,41 +272,41 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
           <TickMark x={rightX} y={eaveY} angle={135} />
 
           {/* Eave height dimension on the right */}
-          <DimLine x1={rightX + 1.2} y1={groundY} x2={rightX + 1.2} y2={eaveY} label={`${fmt(eaveHeight)}m`} offset={0.25} />
-          <line x1={rightX + 0.2} y1={groundY} x2={rightX + 1.4} y2={groundY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.08,0.08" />
-          <line x1={rightX + 0.2} y1={eaveY} x2={rightX + 1.4} y2={eaveY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.08,0.08" />
+          <DimLine x1={rightX + 2} y1={groundY} x2={rightX + 2} y2={eaveY} label={`${fmt(eaveHeight)}m`} />
+          <line x1={rightX + 0.2} y1={groundY} x2={rightX + 2.2} y2={groundY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.1,0.1" />
+          <line x1={rightX + 0.2} y1={eaveY} x2={rightX + 2.2} y2={eaveY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.1,0.1" />
 
           {/* Total ridge height dimension */}
-          <DimLine x1={rightX + 2.2} y1={groundY} x2={rightX + 2.2} y2={ridgeY} label={`${fmt(result.ridgeHeightTotal)}m`} offset={0.25} />
-          <line x1={rightX + 1.4} y1={ridgeY} x2={rightX + 2.4} y2={ridgeY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.08,0.08" />
+          <DimLine x1={rightX + 4} y1={groundY} x2={rightX + 4} y2={ridgeY} label={`${fmt(result.ridgeHeightTotal)}m`} />
+          <line x1={rightX + 2.2} y1={ridgeY} x2={rightX + 4.2} y2={ridgeY} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} strokeDasharray="0.1,0.1" />
 
           {/* Width dimension at bottom */}
-          <DimLine x1={leftX} y1={groundY + 1.4} x2={rightX} y2={groundY + 1.4} label={`${fmt(width)}m`} offset={0.25} />
+          <DimLine x1={leftX} y1={groundY + 2.4} x2={rightX} y2={groundY + 2.4} label={`${fmt(width)}m`} />
 
           {/* 250mm seal callouts */}
-          <text x={leftX - 1.5} y={groundY - 0.1} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
-            <tspan x={leftX - 1.5} dy="0">250mm seal</tspan>
-            <tspan x={leftX - 1.5} dy="1.1em">on floor</tspan>
+          <text x={leftX - 3.2} y={groundY - 0.3} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
+            <tspan x={leftX - 3.2} dy="0">250mm seal</tspan>
+            <tspan x={leftX - 3.2} dy="1.1em">on floor</tspan>
           </text>
-          <line x1={leftX - 0.6} y1={groundY - 0.05} x2={leftX - 0.05} y2={groundY - 0.05} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+          <line x1={leftX - 1.2} y1={groundY - 0.1} x2={leftX - 0.05} y2={groundY - 0.1} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
 
           {/* Legend top-right */}
           <Legend
-            x={vbW - padR + 0.3}
+            x={rightX + 5.5}
             y={padT + 0.2}
             items={[
               { color: CAD_COLORS.panelEdgeGreen, label: "bottom-edge gable" },
               { color: CAD_COLORS.panelEdgeBlue, label: "top-edge standard" },
               { color: CAD_COLORS.panelEdgePink, label: "bottom-edge standard" },
             ]}
-            width={vbW - (vbW - padR + 0.3) - 0.3}
+            width={vbW - (rightX + 5.5) - 0.3}
           />
 
           {/* Title block bottom-right */}
           <TitleBlock
-            x={vbW - padR + 0.3}
+            x={rightX + 5.5}
             y={vbH - padB + 0.3}
-            width={vbW - (vbW - padR + 0.3) - 0.3}
+            width={vbW - (rightX + 5.5) - 0.3}
             project="Marquee Lining"
             dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
           />
