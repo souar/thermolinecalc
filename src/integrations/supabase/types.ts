@@ -217,6 +217,11 @@ export type Database = {
           id: string
           job_id: string
           length: number
+          line_apex: boolean
+          line_gable_triangles: boolean
+          line_gable_walls: boolean
+          line_roof: boolean
+          line_walls: boolean
           lining_type: string
           pitch_deg: number
           roof_overhang_enabled: boolean
@@ -232,6 +237,11 @@ export type Database = {
           id?: string
           job_id: string
           length: number
+          line_apex?: boolean
+          line_gable_triangles?: boolean
+          line_gable_walls?: boolean
+          line_roof?: boolean
+          line_walls?: boolean
           lining_type: string
           pitch_deg: number
           roof_overhang_enabled?: boolean
@@ -247,6 +257,11 @@ export type Database = {
           id?: string
           job_id?: string
           length?: number
+          line_apex?: boolean
+          line_gable_triangles?: boolean
+          line_gable_walls?: boolean
+          line_roof?: boolean
+          line_walls?: boolean
           lining_type?: string
           pitch_deg?: number
           roof_overhang_enabled?: boolean

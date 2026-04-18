@@ -70,6 +70,11 @@ function JobPage() {
       roofOverhangEnabled: latest.roof_overhang_enabled,
       wallFloorSealEnabled: latest.wall_floor_seal_enabled,
       apexOverride: latest.apex_override,
+      lineRoof: latest.line_roof ?? true,
+      lineWalls: latest.line_walls ?? true,
+      lineGableWalls: latest.line_gable_walls ?? true,
+      lineGableTriangles: latest.line_gable_triangles ?? true,
+      lineApex: latest.line_apex ?? true,
     });
   }, [jobQ.data]);
 
@@ -97,6 +102,11 @@ function JobPage() {
           roof_overhang_enabled: input.roofOverhangEnabled,
           wall_floor_seal_enabled: input.wallFloorSealEnabled,
           apex_override: input.apexOverride,
+          line_roof: input.lineRoof !== false,
+          line_walls: input.lineWalls !== false,
+          line_gable_walls: input.lineGableWalls !== false,
+          line_gable_triangles: input.lineGableTriangles !== false,
+          line_apex: input.lineApex !== false,
           created_by: getUsername(),
         })
         .select()

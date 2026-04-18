@@ -30,6 +30,12 @@ export interface CalcInput {
   panelW?: number;
   /** Override panel height from pricing row. Falls back to LINING_TYPES default. */
   panelH?: number;
+  // Section selection — which parts of the marquee are being lined
+  lineRoof?: boolean;
+  lineWalls?: boolean;
+  lineGableWalls?: boolean;
+  lineGableTriangles?: boolean;
+  lineApex?: boolean;
 }
 
 export interface CustomInfill {
@@ -131,6 +137,12 @@ export function calculate(input: CalcInput): CalcResult {
     weightPerM2 = 0,
   } = input;
 
+  const lineRoof = input.lineRoof !== false;
+  const lineWalls = input.lineWalls !== false;
+  const lineGableWalls = input.lineGableWalls !== false;
+  const lineGableTriangles = input.lineGableTriangles !== false;
+  const lineApex = input.lineApex !== false;
+
   const liningDef = LINING_TYPES.find((l) => l.id === input.liningType) ?? LINING_TYPES[0];
   const panelW = input.panelW && input.panelW > 0 ? input.panelW : liningDef.panelW;
   const panelH = input.panelH && input.panelH > 0 ? input.panelH : liningDef.panelH;
@@ -196,11 +208,22 @@ export function calculate(input: CalcInput): CalcResult {
     );
   }
 
-  const roofPanels = roofPanelsPerSide * 2 * bays;
-  const roofM2 = roofPanels * roofM2PerPanel;
+  let roofPanels = roofPanelsPerSide * 2 * bays;
+  let roofM2 = roofPanels * roofM2PerPanel;
 
-  const apexPieces = apexWidth > 1e-6 ? bays : 0;
-  const apexM2 = apexWidth * baySize * bays;
+  let apexPieces = apexWidth > 1e-6 ? bays : 0;
+  let apexM2 = apexWidth * baySize * bays;
+
+  if (!lineRoof) {
+    roofPanels = 0;
+    roofM2 = 0;
+    customRoofEave = null;
+    apexPieces = 0;
+    apexM2 = 0;
+  } else if (!lineApex) {
+    apexPieces = 0;
+    apexM2 = 0;
+  }
 
   // ---- Walls (long sides) ----
   const wallHeight = eaveHeight + (wallFloorSealEnabled ? FLOOR_SEAL : 0);
@@ -243,12 +266,23 @@ export function calculate(input: CalcInput): CalcResult {
     }
   }
 
+  // Gate walls
+  if (!lineWalls) {
+    wallsPanels = 0;
+    wallsM2 = 0;
+    customWallInfill = null;
+  }
+
   // ---- Gable walls (rectangle below eave on each end) ----
   const gableStacks = wallHeight <= panelH + 1e-6 ? 1 : Math.max(1, fullStacks);
   const gablePerPanelArea = panelW * Math.min(panelH, wallHeight / gableStacks);
   const gableWallsPanelsPerEnd = Math.ceil(width / panelW) * gableStacks;
-  const gableWallsPanels = gableWallsPanelsPerEnd * 2;
-  const gableWallsM2 = gableWallsPanels * gablePerPanelArea;
+  let gableWallsPanels = gableWallsPanelsPerEnd * 2;
+  let gableWallsM2 = gableWallsPanels * gablePerPanelArea;
+  if (!lineGableWalls) {
+    gableWallsPanels = 0;
+    gableWallsM2 = 0;
+  }
 
   // ---- Gable triangles: right-angle slices, base aligned to bay; split by panel size + weight ----
   const halfW = width / 2;
@@ -328,11 +362,19 @@ export function calculate(input: CalcInput): CalcResult {
       }
     }
   }
-  const gableTriCount = triPerEnd * 2;
-  const gableInfillCount = infillPerEnd * 2;
+  let gableTriCount = triPerEnd * 2;
+  let gableInfillCount = infillPerEnd * 2;
   const gableTriM2Total = triM2PerEnd * 2;
-  const gableInfillM2 = infillM2PerEnd * 2;
-  const gableTriM2 = gableTriM2Total + gableInfillM2;
+  let gableInfillM2 = infillM2PerEnd * 2;
+  let gableTriM2 = gableTriM2Total + gableInfillM2;
+  let gableTriSlicesOut = gableTriSlices;
+  if (!lineGableTriangles) {
+    gableTriCount = 0;
+    gableInfillCount = 0;
+    gableInfillM2 = 0;
+    gableTriM2 = 0;
+    gableTriSlicesOut = [];
+  }
 
   // ---- Rafter covers ----
   const flapWidth = input.rafterFlapWidth && input.rafterFlapWidth > 0 ? input.rafterFlapWidth : RAFTER_FLAP_DEFAULT;
@@ -420,7 +462,7 @@ export function calculate(input: CalcInput): CalcResult {
     gableTriCount,
     gableInfillCount,
     gableInfillM2,
-    gableTriSlices,
+    gableTriSlices: gableTriSlicesOut,
     totalM2,
     totalPanels,
     totalWeightKg,
@@ -445,6 +487,11 @@ export const DEFAULT_INPUT: CalcInput = {
   legRaftersEnabled: false,
   rafterFlapWidth: 0.4,
   roofRafterLength: 10,
+  lineRoof: true,
+  lineWalls: true,
+  lineGableWalls: true,
+  lineGableTriangles: true,
+  lineApex: true,
 };
 
 export function fmt(n: number, dp = 2): string {

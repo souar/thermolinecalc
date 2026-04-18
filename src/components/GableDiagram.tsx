@@ -94,36 +94,41 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
             strokeWidth={CAD_STROKE}
           />
 
-          {/* Wall panel grid */}
-          <rect x={ox} y={eaveY} width={width} height={stackH} fill="#fff" stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
-          {Array.from({ length: colsPerEnd - 1 }).map((_, i) => {
-            const x = ox + (i + 1) * (width / colsPerEnd);
-            return <line key={`c${i}`} x1={x} y1={eaveY} x2={x} y2={groundY} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} opacity={0.5} />;
-          })}
-          {Array.from({ length: rowsPerEnd - 1 }).map((_, i) => {
-            const y = eaveY + (i + 1) * (stackH / rowsPerEnd);
-            return <line key={`r${i}`} x1={ox} y1={y} x2={ox + width} y2={y} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} opacity={0.5} />;
-          })}
-          {/* Wall panel labels */}
-          {Array.from({ length: colsPerEnd }).map((_, c) =>
-            Array.from({ length: rowsPerEnd }).map((_, r) => {
-              const x = ox + (c + 0.5) * (width / colsPerEnd);
-              const y = eaveY + (r + 0.5) * (stackH / rowsPerEnd);
-              return <PartLabel key={`p${c}-${r}`} x={x} y={y} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-W${c + 1}-${r + 1}`} />;
-            })
+          {/* Wall panel grid — only when gable walls are lined */}
+          {input.lineGableWalls !== false && (
+            <>
+              <rect x={ox} y={eaveY} width={width} height={stackH} fill="#fff" stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
+              {Array.from({ length: colsPerEnd - 1 }).map((_, i) => {
+                const x = ox + (i + 1) * (width / colsPerEnd);
+                return <line key={`c${i}`} x1={x} y1={eaveY} x2={x} y2={groundY} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} opacity={0.5} />;
+              })}
+              {Array.from({ length: rowsPerEnd - 1 }).map((_, i) => {
+                const y = eaveY + (i + 1) * (stackH / rowsPerEnd);
+                return <line key={`r${i}`} x1={ox} y1={y} x2={ox + width} y2={y} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} opacity={0.5} />;
+              })}
+              {/* Wall panel labels */}
+              {Array.from({ length: colsPerEnd }).map((_, c) =>
+                Array.from({ length: rowsPerEnd }).map((_, r) => {
+                  const x = ox + (c + 0.5) * (width / colsPerEnd);
+                  const y = eaveY + (r + 0.5) * (stackH / rowsPerEnd);
+                  return <PartLabel key={`p${c}-${r}`} x={x} y={y} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-W${c + 1}-${r + 1}`} />;
+                })
+              )}
+              {/* Wall join ticks */}
+              {Array.from({ length: colsPerEnd - 1 }).map((_, i) => {
+                const x = ox + (i + 1) * (width / colsPerEnd);
+                return Array.from({ length: rowsPerEnd }).map((_, r) => {
+                  const y = eaveY + r * (stackH / rowsPerEnd);
+                  return <TickMark key={`wt${i}-${r}`} x={x} y={y} angle={45} />;
+                });
+              })}
+            </>
           )}
-          {/* Wall join ticks */}
-          {Array.from({ length: colsPerEnd - 1 }).map((_, i) => {
-            const x = ox + (i + 1) * (width / colsPerEnd);
-            return Array.from({ length: rowsPerEnd }).map((_, r) => {
-              const y = eaveY + r * (stackH / rowsPerEnd);
-              return <TickMark key={`wt${i}-${r}`} x={x} y={y} angle={45} />;
-            });
-          })}
 
-          {/* Gable triangle background */}
-          <polygon points={`${ox},${eaveY} ${ox + width},${eaveY} ${midX},${ridgeY}`} fill={CAD_COLORS.fillGable} stroke={CAD_COLORS.panelEdgeGreen} strokeWidth={CAD_STROKE} opacity={0.5} />
-
+          {/* Gable triangle background — only when triangles are lined */}
+          {input.lineGableTriangles !== false && (
+            <polygon points={`${ox},${eaveY} ${ox + width},${eaveY} ${midX},${ridgeY}`} fill={CAD_COLORS.fillGable} stroke={CAD_COLORS.panelEdgeGreen} strokeWidth={CAD_STROKE} opacity={0.5} />
+          )}
           {/* Internal struts (vertical at each rafter junction) */}
           {gableTriSlices.length > 0 && (() => {
             let acc = 0;
