@@ -125,9 +125,10 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
             </>
           )}
 
-          {/* Gable triangle background */}
-          <polygon points={`${ox},${eaveY} ${ox + width},${eaveY} ${midX},${ridgeY}`} fill={CAD_COLORS.fillGable} stroke={CAD_COLORS.panelEdgeGreen} strokeWidth={CAD_STROKE} opacity={0.5} />
-
+          {/* Gable triangle background — only when triangles are lined */}
+          {input.lineGableTriangles !== false && (
+            <polygon points={`${ox},${eaveY} ${ox + width},${eaveY} ${midX},${ridgeY}`} fill={CAD_COLORS.fillGable} stroke={CAD_COLORS.panelEdgeGreen} strokeWidth={CAD_STROKE} opacity={0.5} />
+          )}
           {/* Internal struts (vertical at each rafter junction) */}
           {gableTriSlices.length > 0 && (() => {
             let acc = 0;
