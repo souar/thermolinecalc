@@ -260,8 +260,9 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             return <g key={`rl${side}`}>{labels}</g>;
           })}
 
-          {/* Apex part label */}
-          <PartLabel x={midX} y={ridgeY + (apexBaseY - ridgeY) / 2} label="apex fitting piece" code={`${Math.round(apexWidth * 1000)}mm`} fontSize={0.1} />
+          {/* Apex part label with leader line */}
+          <line x1={midX} y1={ridgeY} x2={midX + 1.5} y2={ridgeY - 0.8} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+          <PartLabel x={midX + 1.6} y={ridgeY - 0.95} label="apex fitting piece" code={`${Math.round(apexWidth * 1000)}mm`} anchor="start" />
 
           {/* Tick marks at panel joins */}
           {wallTicks.map((t, i) => <TickMark key={`wt${i}`} x={t.x} y={t.y} angle={45} />)}
