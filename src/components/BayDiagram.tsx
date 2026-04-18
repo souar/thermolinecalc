@@ -183,13 +183,20 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             );
           })}
 
-          {/* Apex triangle filled */}
+          {/* Apex cap — flush triangular cap sitting on the ridge, sharing corners with rafters */}
           <polygon
             points={`${apexLeftX},${apexBaseY} ${apexRightX},${apexBaseY} ${midX},${ridgeY}`}
             fill={CAD_COLORS.fillApex}
-            stroke={CAD_COLORS.panelEdgePink}
+            stroke={CAD_COLORS.beam}
             strokeWidth={CAD_STROKE}
+            strokeLinejoin="round"
           />
+          {/* Pink edge highlight on the two sloping apex edges */}
+          <line x1={apexLeftX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
+          <line x1={apexRightX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
+          {/* Tick marks at apex-to-rafter joins */}
+          <TickMark x={apexLeftX} y={apexBaseY} angle={45} />
+          <TickMark x={apexRightX} y={apexBaseY} angle={135} />
 
           {/* Wall stack labels (centered between stacks) */}
           {[leftX, rightX].map((x, side) => (
