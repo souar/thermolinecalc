@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalculatorPanel } from "@/components/CalculatorPanel";
-import { CalcInput, DEFAULT_INPUT, calculate } from "@/lib/calculator";
+import { CalcInput, DEFAULT_INPUT, DEFAULT_INSTALL_INPUT, InstallInput, calculate } from "@/lib/calculator";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, Save } from "lucide-react";
 import { getUsername } from "@/lib/username";
