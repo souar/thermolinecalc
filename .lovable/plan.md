@@ -1,37 +1,55 @@
 
 
-## Increase diagram readability
+## Install & Labour — Phase 1: Install time
 
-### 1. Larger, readable text (`src/components/diagrams/cad.tsx`)
-Bump the CAD font constants ~2.5×:
-- `CAD_FONT` 0.22 → 0.55
-- `CAD_FONT_SM` 0.16 → 0.40
-- `CAD_FONT_XS` 0.13 → 0.32
+Add install time calculation as a new **Install & Labour** tab in the Calculator page (sibling to existing Specification / Diagrams tabs). All inputs and outputs live inside this tab.
 
-This scales every label/dimension/legend across all three diagrams in one place. Also bump default `Legend`/`TitleBlock` row heights and padding proportionally so text doesn't overflow their boxes.
+### Tab contents
 
-### 2. Bolder panel-join markers (`cad.tsx` + diagrams)
-Make `TickMark` more prominent:
-- Default `size` 0.18 → 0.45
-- Stroke uses `CAD_STROKE_THICK` already; bump to 0.08 for visibility
-- Add a small filled dot at the join centre for extra clarity
+**1. Time per panel (editable table)** — same styling as the spec card:
+| Section | Default | Unit |
+|---|---|---|
+| Roof panels | 60 | min/panel |
+| Wall panels | 45 | min/panel |
+| Gable wall panels | 45 | min/panel |
+| Gable triangles & infills | 60 | min/panel |
+| Apex infill | 45 | min/panel |
+| Eave infill | 45 | min/panel |
+| Custom wall infill | 45 | min/panel |
+| Rafter covers | 20 | min/panel |
 
-Also thicken the main outline strokes:
-- `CAD_STROKE` 0.025 → 0.04
-- `CAD_STROKE_THICK` 0.05 → 0.08
+**2. Team controls:**
+- Number of teams (default 1, min 1)
+- People per team (default 6, min 6 — enforced)
+- Hours per working day (default 8) — *suggested, captures shorter/longer shifts*
+- Parallel sections toggle (default on) — *suggested, sections run concurrently across teams when on*
 
-### 3. Apex integration (`src/components/BayDiagram.tsx`)
-Currently the apex infill is drawn as a separate horizontal band sitting above the ridge line, making it look detached. Fix:
-- Remove the visual gap between the top of each roof slope and the apex piece
-- Draw the apex as a small triangular/trapezoidal cap that sits flush on the ridge, with its base aligned to where the two slopes meet
-- Keep the pink fill colour but use the same outline weight as the rafters so it reads as one continuous structure
-- Move the "thermoline panel fitting piece — {apexWidth}mm" label to sit just above the apex with a leader line if needed, rather than inside a detached rectangle
+**3. Results:**
+- Headline tiles: total install days, total person-hours, avg panels/day/team
+- Per-section breakdown table: panels, min/panel, hours, days
+
+### Calculation (`src/lib/calculator.ts`)
+
+For each section: `hours = panels × min / 60`, `days = hours / (hoursPerDay × teams)`.
+Totals sum hours then divide by `(hoursPerDay × teams)`.
+Person-hours = `totalHours × peoplePerTeam × teams` (informational).
+
+### Persistence
+
+- New Supabase table `install_time_defaults` — single editable row of global defaults (pattern matches `lining_pricing`).
+- Team config persists via existing per-job / localStorage paths.
 
 ### Files to change
-- `src/components/diagrams/cad.tsx` — font + tick + stroke constants, legend/title block padding
-- `src/components/BayDiagram.tsx` — apex geometry rework
+
+- `src/lib/calculator.ts` — add `InstallInput`, `InstallResult`, `calculateInstall()`
+- `src/components/InstallPanel.tsx` — new component (inputs + results)
+- `src/components/CalculatorPanel.tsx` — add **Install & Labour** tab, render `<InstallPanel />` inside it
+- `src/routes/calculator.tsx` & `src/routes/jobs.$jobId.tsx` — wire install state through
+- New migration — `install_time_defaults` table seeded with defaults
 
 ### Out of scope
-- Re-sizing viewBox padding (current padding should still fit; will adjust only if labels clip after the font bump)
-- Changes to RoofPlanDiagram / GableDiagram beyond what the shared constants give them automatically
+
+- Cost / labour rates (later phase)
+- Crew skill / ramp-up factor, travel, weather contingency
+- Per-job override of time-per-panel defaults (global only for now)
 
