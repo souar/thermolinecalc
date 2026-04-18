@@ -26,10 +26,10 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
   const roofPanelsPerSide = result.bays > 0 ? result.roofPanels / 2 / result.bays : 0;
 
   const totalH = eaveHeight + ridgeHeight;
-  const padL = 2.5;
-  const padR = 5.5; // room for dimension + legend
-  const padT = 1.0;
-  const padB = 2.5;
+  const padL = 4;
+  const padR = 9; // room for dimension + legend
+  const padT = 2;
+  const padB = 4;
   const vbW = width + padL + padR;
   const vbH = totalH + padT + padB;
   const ox = padL;
