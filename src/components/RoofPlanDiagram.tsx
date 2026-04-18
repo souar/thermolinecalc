@@ -106,18 +106,18 @@ export function RoofPlanDiagram({ input, result }: Props) {
           {bayJunctionXs.map((x, i) => {
             const tag = i === 0 ? "RB" : i === bayJunctionXs.length - 1 ? "RB" : i === 1 || i === bayJunctionXs.length - 2 ? "VB" : "NB";
             return (
-              <text key={`tag${i}`} x={x} y={oy - 0.3} textAnchor="middle" fontSize={CAD_FONT_XS} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{tag}</text>
+              <text key={`tag${i}`} x={x} y={oy - 0.7} textAnchor="middle" fontSize={CAD_FONT_SM} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{tag}</text>
             );
           })}
 
           {/* Bay numbers (bottom inside) */}
           {bayJunctionXs.map((x, i) => (
-            <text key={`bn${i}`} x={x} y={oy + planH + 0.4} textAnchor="middle" fontSize={CAD_FONT_XS} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-monospace, monospace" }}>{i + 1}</text>
+            <text key={`bn${i}`} x={x} y={oy + planH + 0.8} textAnchor="middle" fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-monospace, monospace" }}>{i + 1}</text>
           ))}
 
           {/* Band letters (left) */}
           {bandLetters.map((l, i) => (
-            <text key={`bl${i}`} x={ox - 0.4} y={bandYs[i]} textAnchor="middle" dominantBaseline="middle" fontSize={CAD_FONT_XS} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{l}</text>
+            <text key={`bl${i}`} x={ox - 1} y={bandYs[i]} textAnchor="middle" dominantBaseline="middle" fontSize={CAD_FONT_SM} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{l}</text>
           ))}
 
           {/* Bottom dimension lines (per-bay) */}
