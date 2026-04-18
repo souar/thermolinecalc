@@ -16,10 +16,10 @@ export function RoofPlanDiagram({ input, result }: Props) {
   const { length, width, baySize } = input;
   const { bays, slopeLength, apexWidth } = result;
 
-  const padL = 3.0;
-  const padR = 5.0;
-  const padT = 1.5;
-  const padB = 3.0;
+  const padL = 6;
+  const padR = 10;
+  const padT = 3;
+  const padB = 5;
 
   // Use length × width directly as svg coords (metres).
   const planW = length;
