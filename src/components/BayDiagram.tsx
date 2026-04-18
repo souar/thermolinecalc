@@ -253,7 +253,7 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             for (let i = 0; i < segCount; i++) {
               const lx = startX + dir * (cursorPlan + segPlan / 2);
               const ly = eaveY - (cursorRise + segRise / 2);
-              labels.push(<PartLabel key={`r${side}-${i}`} x={lx} y={ly - 0.15} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-R-${i + 1}`} fontSize={0.11} />);
+              labels.push(<PartLabel key={`r${side}-${i}`} x={lx} y={ly - 0.3} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-R-${i + 1}`} />);
               cursorPlan += segPlan;
               cursorRise += segRise;
             }
