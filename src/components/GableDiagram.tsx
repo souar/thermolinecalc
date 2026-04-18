@@ -109,7 +109,7 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
             Array.from({ length: rowsPerEnd }).map((_, r) => {
               const x = ox + (c + 0.5) * (width / colsPerEnd);
               const y = eaveY + (r + 0.5) * (stackH / rowsPerEnd);
-              return <PartLabel key={`p${c}-${r}`} x={x} y={y} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-W${c + 1}-${r + 1}`} fontSize={0.11} />;
+              return <PartLabel key={`p${c}-${r}`} x={x} y={y} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-W${c + 1}-${r + 1}`} />;
             })
           )}
           {/* Wall join ticks */}
