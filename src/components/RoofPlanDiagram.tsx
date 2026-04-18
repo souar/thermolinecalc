@@ -1,6 +1,6 @@
 import { CalcInput, CalcResult, fmt } from "@/lib/calculator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_FONT_XS, DimLine, Legend, TitleBlock } from "./diagrams/cad";
+import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_FONT_SM, DimLine, Legend, TitleBlock } from "./diagrams/cad";
 
 interface Props {
   input: CalcInput;
