@@ -4,12 +4,12 @@ import { ReactNode } from "react";
 // (typically metres). Stroke widths and font sizes are intentionally tiny so
 // they read as fine line-work when the SVG is scaled up.
 
-export const CAD_STROKE = 0.025;
-export const CAD_STROKE_THIN = 0.015;
-export const CAD_STROKE_THICK = 0.05;
-export const CAD_FONT = 0.22;
-export const CAD_FONT_SM = 0.16;
-export const CAD_FONT_XS = 0.13;
+export const CAD_STROKE = 0.04;
+export const CAD_STROKE_THIN = 0.02;
+export const CAD_STROKE_THICK = 0.08;
+export const CAD_FONT = 0.55;
+export const CAD_FONT_SM = 0.4;
+export const CAD_FONT_XS = 0.32;
 
 export const CAD_COLORS = {
   outline: "#1a1a1a",
