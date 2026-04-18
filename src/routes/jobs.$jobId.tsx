@@ -102,6 +102,11 @@ function JobPage() {
           roof_overhang_enabled: input.roofOverhangEnabled,
           wall_floor_seal_enabled: input.wallFloorSealEnabled,
           apex_override: input.apexOverride,
+          line_roof: input.lineRoof !== false,
+          line_walls: input.lineWalls !== false,
+          line_gable_walls: input.lineGableWalls !== false,
+          line_gable_triangles: input.lineGableTriangles !== false,
+          line_apex: input.lineApex !== false,
           created_by: getUsername(),
         })
         .select()
