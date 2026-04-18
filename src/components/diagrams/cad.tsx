@@ -158,14 +158,14 @@ interface TitleBlockProps {
 }
 
 /** Bottom-right project info block. */
-export function TitleBlock({ x, y, width = 4.5, project, dims, date, fontSize = CAD_FONT_XS }: TitleBlockProps) {
-  const lh = 0.32;
+export function TitleBlock({ x, y, width = 8, project, dims, date, fontSize = CAD_FONT_XS }: TitleBlockProps) {
+  const lh = 0.7;
   const lines = [
     { k: "PROJECT", v: project },
     { k: "SIZE", v: dims },
     { k: "DATE", v: date ?? new Date().toISOString().slice(0, 10) },
   ];
-  const h = lines.length * lh + 0.2;
+  const h = lines.length * lh + 0.3;
   return (
     <g>
       <rect x={x} y={y} width={width} height={h} fill="#fff" stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
