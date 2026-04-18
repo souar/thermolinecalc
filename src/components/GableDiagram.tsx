@@ -1,6 +1,7 @@
 import { CalcInput, CalcResult, fmt } from "@/lib/calculator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_FONT_SM, DimLine, Legend, PartLabel, TickMark, TitleBlock } from "./diagrams/cad";
 
 interface Props {
   input: CalcInput;
@@ -10,27 +11,31 @@ interface Props {
 }
 
 export function GableDiagram({ input, result, panelW, panelH }: Props) {
-  const { width, baySize } = input;
+  const { width, length } = input;
   const { ridgeHeight, wallStacks, gableWallsPanels, gableTriCount, gableInfillCount, gableTriSlices } = result;
   const stackH = wallStacks * panelH;
 
   const colsPerEnd = Math.ceil(width / panelW);
   const rowsPerEnd = Math.max(1, wallStacks);
 
-  const pad = 2;
-  const vbW = width + pad * 2;
-  const vbH = stackH + ridgeHeight + pad * 2 + 1.5;
-  const ox = pad;
-  const oy = pad + 0.5;
+  const padL = 1.5;
+  const padR = 5.5;
+  const padT = 1.0;
+  const padB = 2.5;
+  const vbW = width + padL + padR;
+  const vbH = stackH + ridgeHeight + padT + padB;
+  const ox = padL;
+  const oy = padT;
   const groundY = oy + stackH + ridgeHeight;
   const eaveY = groundY - stackH;
   const ridgeY = oy;
   const midX = ox + width / 2;
 
-  type Poly = { pts: string; kind: "triangle" | "infill" };
+  type Poly = { pts: string; kind: "triangle" | "infill"; cx: number; cy: number; label: string };
   const leftPolys: Poly[] = [];
   const rightPolys: Poly[] = [];
   let xL = 0;
+  let sliceIdx = 0;
   for (const slice of gableTriSlices) {
     const x1 = ox + xL;
     const x2 = ox + xL + slice.base;
@@ -41,20 +46,24 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
 
     for (const p of slice.pieces) {
       if (p.kind === "triangle") {
-        leftPolys.push({ pts: `${x1},${yOuterTop} ${x2},${yOuterTop} ${x2},${yInnerTop}`, kind: "triangle" });
-        rightPolys.push({ pts: `${rx1},${yOuterTop} ${rx2},${yOuterTop} ${rx2},${yInnerTop}`, kind: "triangle" });
+        const cx = (x1 + x2 + x2) / 3;
+        const cy = (yOuterTop + yOuterTop + yInnerTop) / 3;
+        leftPolys.push({ pts: `${x1},${yOuterTop} ${x2},${yOuterTop} ${x2},${yInnerTop}`, kind: "triangle", cx, cy, label: sliceIdx === 0 ? "ridge gable" : sliceIdx === gableTriSlices.length - 1 ? "left gable" : "middle gable" });
+        const rcx = (rx1 + rx2 + rx2) / 3;
+        rightPolys.push({ pts: `${rx1},${yOuterTop} ${rx2},${yOuterTop} ${rx2},${yInnerTop}`, kind: "triangle", cx: rcx, cy, label: sliceIdx === 0 ? "ridge gable" : sliceIdx === gableTriSlices.length - 1 ? "right gable" : "middle gable" });
       }
     }
     let cursorY = yOuterTop;
     for (const p of slice.pieces) {
       if (p.kind === "infill") {
         const yBottom = cursorY + p.height;
-        leftPolys.push({ pts: `${x1},${cursorY} ${x2},${cursorY} ${x2},${yBottom} ${x1},${yBottom}`, kind: "infill" });
-        rightPolys.push({ pts: `${rx1},${cursorY} ${rx2},${cursorY} ${rx2},${yBottom} ${rx1},${yBottom}`, kind: "infill" });
+        leftPolys.push({ pts: `${x1},${cursorY} ${x2},${cursorY} ${x2},${yBottom} ${x1},${yBottom}`, kind: "infill", cx: (x1 + x2) / 2, cy: (cursorY + yBottom) / 2, label: "gable infill" });
+        rightPolys.push({ pts: `${rx1},${cursorY} ${rx2},${cursorY} ${rx2},${yBottom} ${rx1},${yBottom}`, kind: "infill", cx: (rx1 + rx2) / 2, cy: (cursorY + yBottom) / 2, label: "gable infill" });
         cursorY = yBottom;
       }
     }
     xL += slice.base;
+    sliceIdx++;
   }
 
   const halfTotalM2 = gableTriSlices.reduce(
@@ -70,38 +79,125 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="rounded-lg border border-border bg-muted/20 p-4">
-          <svg
-            viewBox={`0 0 ${vbW} ${vbH}`}
-            className="mx-auto h-auto w-full max-h-[60vh]"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <line x1={ox - 0.5} y1={groundY} x2={ox + width + 0.5} y2={groundY} stroke="currentColor" strokeWidth="0.05" className="text-muted-foreground" />
-            <rect x={ox} y={eaveY} width={width} height={stackH} className="fill-primary/10 stroke-primary/60" strokeWidth="0.05" />
-            {Array.from({ length: colsPerEnd - 1 }).map((_, i) => {
-              const x = ox + (i + 1) * (width / colsPerEnd);
-              return <line key={`c${i}`} x1={x} y1={eaveY} x2={x} y2={groundY} className="stroke-primary/40" strokeWidth="0.03" />;
-            })}
-            {Array.from({ length: rowsPerEnd - 1 }).map((_, i) => {
-              const y = eaveY + (i + 1) * (stackH / rowsPerEnd);
-              return <line key={`r${i}`} x1={ox} y1={y} x2={ox + width} y2={y} className="stroke-primary/40" strokeWidth="0.03" />;
-            })}
-            <polygon points={`${ox},${eaveY} ${ox + width},${eaveY} ${midX},${ridgeY}`} className="fill-accent/5 stroke-accent" strokeWidth="0.05" />
-            {[...leftPolys, ...rightPolys].map((p, i) =>
-              p.kind === "triangle" ? (
-                <polygon key={`tri${i}`} points={p.pts} className="fill-accent/30 stroke-accent" strokeWidth="0.04" />
-              ) : (
-                <polygon key={`inf${i}`} points={p.pts} className="fill-secondary/40 stroke-secondary-foreground/40" strokeWidth="0.04" />
-              ),
-            )}
-            <text x={midX} y={ridgeY - 0.2} textAnchor="middle" fontSize="0.45" className="fill-foreground">
-              {gableTriCount / 2} tri + {gableInfillCount / 2} infill per end
-            </text>
-            <text x={midX} y={(eaveY + groundY) / 2} textAnchor="middle" fontSize="0.6" className="fill-foreground">
-              {colsPerEnd} × {rowsPerEnd} = {colsPerEnd * rowsPerEnd} panels
-            </text>
-          </svg>
-        </div>
+        <CadFrame vbW={vbW} vbH={vbH}>
+          {/* Ground line + hatching */}
+          <line x1={ox - 0.5} y1={groundY} x2={ox + width + 0.5} y2={groundY} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE} />
+          {Array.from({ length: Math.floor(width + 1) }).map((_, i) => (
+            <line key={`gh${i}`} x1={ox - 0.5 + i * 0.4} y1={groundY} x2={ox - 0.5 + i * 0.4 - 0.2} y2={groundY + 0.25} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+          ))}
+
+          {/* Outer frame outline */}
+          <polyline
+            points={`${ox},${groundY} ${ox},${eaveY} ${midX},${ridgeY} ${ox + width},${eaveY} ${ox + width},${groundY}`}
+            fill="none"
+            stroke={CAD_COLORS.outline}
+            strokeWidth={CAD_STROKE}
+          />
+
+          {/* Wall panel grid */}
+          <rect x={ox} y={eaveY} width={width} height={stackH} fill="#fff" stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
+          {Array.from({ length: colsPerEnd - 1 }).map((_, i) => {
+            const x = ox + (i + 1) * (width / colsPerEnd);
+            return <line key={`c${i}`} x1={x} y1={eaveY} x2={x} y2={groundY} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} opacity={0.5} />;
+          })}
+          {Array.from({ length: rowsPerEnd - 1 }).map((_, i) => {
+            const y = eaveY + (i + 1) * (stackH / rowsPerEnd);
+            return <line key={`r${i}`} x1={ox} y1={y} x2={ox + width} y2={y} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} opacity={0.5} />;
+          })}
+          {/* Wall panel labels */}
+          {Array.from({ length: colsPerEnd }).map((_, c) =>
+            Array.from({ length: rowsPerEnd }).map((_, r) => {
+              const x = ox + (c + 0.5) * (width / colsPerEnd);
+              const y = eaveY + (r + 0.5) * (stackH / rowsPerEnd);
+              return <PartLabel key={`p${c}-${r}`} x={x} y={y} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-W${c + 1}-${r + 1}`} fontSize={0.11} />;
+            })
+          )}
+          {/* Wall join ticks */}
+          {Array.from({ length: colsPerEnd - 1 }).map((_, i) => {
+            const x = ox + (i + 1) * (width / colsPerEnd);
+            return Array.from({ length: rowsPerEnd }).map((_, r) => {
+              const y = eaveY + r * (stackH / rowsPerEnd);
+              return <TickMark key={`wt${i}-${r}`} x={x} y={y} angle={45} />;
+            });
+          })}
+
+          {/* Gable triangle background */}
+          <polygon points={`${ox},${eaveY} ${ox + width},${eaveY} ${midX},${ridgeY}`} fill={CAD_COLORS.fillGable} stroke={CAD_COLORS.panelEdgeGreen} strokeWidth={CAD_STROKE} opacity={0.5} />
+
+          {/* Internal struts (vertical at each rafter junction) */}
+          {gableTriSlices.length > 0 && (() => {
+            let acc = 0;
+            return gableTriSlices.slice(0, -1).map((sl, i) => {
+              acc += sl.base;
+              const x = ox + acc;
+              const yTop = eaveY - sl.hOuter;
+              return (
+                <g key={`st${i}`}>
+                  <line x1={x - 0.04} y1={eaveY} x2={x - 0.04} y2={yTop} stroke={CAD_COLORS.beam} strokeWidth={CAD_STROKE_THIN} />
+                  <line x1={x + 0.04} y1={eaveY} x2={x + 0.04} y2={yTop} stroke={CAD_COLORS.beam} strokeWidth={CAD_STROKE_THIN} />
+                </g>
+              );
+            });
+          })()}
+
+          {/* Gable pieces */}
+          {[...leftPolys, ...rightPolys].map((p, i) => (
+            <g key={`gp${i}`}>
+              <polygon points={p.pts} fill={p.kind === "triangle" ? CAD_COLORS.fillGable : CAD_COLORS.fillUpperRoof} stroke={p.kind === "triangle" ? CAD_COLORS.panelEdgeGreen : CAD_COLORS.panelEdgeBlue} strokeWidth={CAD_STROKE_THIN} />
+              <PartLabel x={p.cx} y={p.cy} label={p.label} code={p.kind === "triangle" ? "MAL-G" : "MAL-INF"} fontSize={0.1} />
+            </g>
+          ))}
+
+          {/* Additional strut callout near apex */}
+          <text x={midX + 0.6} y={ridgeY + 0.3} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} fontStyle="italic" style={{ fontFamily: "ui-serif, Georgia, serif" }}>additional strut</text>
+          <line x1={midX + 0.55} y1={ridgeY + 0.3} x2={midX + 0.05} y2={ridgeY + 0.15} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+
+          {/* Rafter flap labels on legs (if enabled) */}
+          {input.legRaftersEnabled && [ox, ox + width].map((x, side) => (
+            <PartLabel
+              key={`lr${side}`}
+              x={x + (side === 0 ? -0.35 : 0.35)}
+              y={(eaveY + groundY) / 2}
+              label="rafter flap"
+              code={`${input.rafterFlapWidth ?? 0.4}×${fmt(input.eaveHeight)}m`}
+              rotate={90}
+              fontSize={0.1}
+            />
+          ))}
+
+          {/* 250mm seal callout */}
+          <text x={ox - 1.0} y={groundY - 0.15} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
+            <tspan x={ox - 1.0} dy="0">250mm</tspan>
+            <tspan x={ox - 1.0} dy="1.1em">floor seal</tspan>
+          </text>
+
+          {/* Eave height dimension */}
+          <DimLine x1={ox + width + 1.2} y1={groundY} x2={ox + width + 1.2} y2={eaveY} label={`${fmt(input.eaveHeight)}m`} offset={0.25} />
+          <DimLine x1={ox + width + 2.2} y1={groundY} x2={ox + width + 2.2} y2={ridgeY} label={`${fmt(result.ridgeHeightTotal)}m`} offset={0.25} />
+          {/* Width dim */}
+          <DimLine x1={ox} y1={groundY + 1.4} x2={ox + width} y2={groundY + 1.4} label={`${fmt(width)}m`} offset={0.25} />
+
+          {/* Legend */}
+          <Legend
+            x={vbW - padR + 0.3}
+            y={padT + 0.2}
+            items={[
+              { color: CAD_COLORS.panelEdgeGreen, label: "gable edge" },
+              { color: CAD_COLORS.panelEdgeBlue, label: "infill edge" },
+              { color: CAD_COLORS.panelEdgePink, label: "ridge edge" },
+            ]}
+            width={vbW - (vbW - padR + 0.3) - 0.3}
+          />
+
+          {/* Title block */}
+          <TitleBlock
+            x={vbW - padR + 0.3}
+            y={vbH - padB + 0.3}
+            width={vbW - (vbW - padR + 0.3) - 0.3}
+            project="Marquee Gable"
+            dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
+          />
+        </CadFrame>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="overflow-hidden rounded-lg border border-border">
@@ -180,7 +276,7 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
                   }),
                 )}
                 <tr className="border-t-2 border-border bg-primary/5">
-                  <td className="px-4 py-3 font-semibold" colSpan={3}>Per half · base = {fmt(baySize, 0)}m bays</td>
+                  <td className="px-4 py-3 font-semibold" colSpan={3}>Per half · base = {fmt(input.baySize, 0)}m bays</td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums">{fmt(halfTotalM2)}</td>
                 </tr>
               </tbody>

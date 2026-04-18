@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, HardHat, Factory, LayoutDashboard, Ruler } from "lucide-react";
 import { BayDiagram } from "./BayDiagram";
 import { GableDiagram } from "./GableDiagram";
+import { RoofPlanDiagram } from "./RoofPlanDiagram";
 import { LINING_TYPES as LT } from "@/lib/calculator";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -410,6 +411,7 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
       <TabsContent value="diagrams" className="space-y-6">
         <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
         <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
+        <RoofPlanDiagram input={calcInput} result={result} />
       </TabsContent>
 
       <TabsContent value="labour">
