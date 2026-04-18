@@ -1,55 +1,76 @@
 
 
-## Install & Labour — Phase 1: Install time
+## Add "sections to line" selection to marquee specification
 
-Add install time calculation as a new **Install & Labour** tab in the Calculator page (sibling to existing Specification / Diagrams tabs). All inputs and outputs live inside this tab.
+Let users toggle which parts of the marquee are actually being lined. Unselected sections are excluded from m², panels, weight, cost, install time, and diagrams.
 
-### Tab contents
+### New inputs (CalcInput)
 
-**1. Time per panel (editable table)** — same styling as the spec card:
-| Section | Default | Unit |
-|---|---|---|
-| Roof panels | 60 | min/panel |
-| Wall panels | 45 | min/panel |
-| Gable wall panels | 45 | min/panel |
-| Gable triangles & infills | 60 | min/panel |
-| Apex infill | 45 | min/panel |
-| Eave infill | 45 | min/panel |
-| Custom wall infill | 45 | min/panel |
-| Rafter covers | 20 | min/panel |
+Boolean flags, all default `true` for backwards compatibility:
+- `lineRoof`
+- `lineWalls` (long sides)
+- `lineGableWalls` (rectangular fill below eave on each end)
+- `lineGableTriangles` (triangles + infills above eave on each end)
+- `lineApex`
 
-**2. Team controls:**
-- Number of teams (default 1, min 1)
-- People per team (default 6, min 6 — enforced)
-- Hours per working day (default 8) — *suggested, captures shorter/longer shifts*
-- Parallel sections toggle (default on) — *suggested, sections run concurrently across teams when on*
+Existing `roofRaftersEnabled` / `legRaftersEnabled` already cover rafter flaps — keep as-is but group them into the same UI block.
 
-**3. Results:**
-- Headline tiles: total install days, total person-hours, avg panels/day/team
-- Per-section breakdown table: panels, min/panel, hours, days
+### UI — CalculatorPanel spec card
 
-### Calculation (`src/lib/calculator.ts`)
+Add a new "Sections to line" sub-section above the lining type/pricing rows, styled like the existing toggle group (overhang / floor seal). A grid of switches:
+- Roof
+- Walls
+- Gable walls
+- Gable triangles & infills
+- Apex infill
+- Roof rafter covers (existing)
+- Leg rafter covers (existing)
 
-For each section: `hours = panels × min / 60`, `days = hours / (hoursPerDay × teams)`.
-Totals sum hours then divide by `(hoursPerDay × teams)`.
-Person-hours = `totalHours × peoplePerTeam × teams` (informational).
+Sensible interactions:
+- If Roof is off → Apex auto-disables and is hidden (apex only exists with a roof)
+- If Roof is off → Roof rafter covers auto-disable
+- If Walls is off → Leg rafter covers auto-disable
+- Gable walls and Gable triangles are independent (can line just triangles, just walls, both, or neither)
+
+### Calculation logic (`src/lib/calculator.ts`)
+
+In `calculate()`, gate each section's outputs on its flag. When a section is off, set its panels/m²/pieces to 0 and its custom infill to `null`. Specifically:
+- `lineRoof = false` → `roofPanels=0, roofM2=0, customRoofEave=null`, also force `apexPieces=0, apexM2=0`
+- `lineApex = false` → `apexPieces=0, apexM2=0` (apex still possible without if roof on but user opted out)
+- `lineWalls = false` → `wallsPanels=0, wallsM2=0, customWallInfill=null`
+- `lineGableWalls = false` → `gableWallsPanels=0, gableWallsM2=0`
+- `lineGableTriangles = false` → `gableTriCount=0, gableInfillCount=0, gableTriM2=0, gableInfillM2=0, gableTriSlices=[]`
+- Existing rafter flags already gate `roofRafterCovers` / `legRafterCovers`
+
+Totals (`totalM2`, `totalPanels`, `totalWeightKg`, `totalCost`) recompute from the gated values automatically.
+
+### Diagrams
+
+- `BayDiagram` — hide roof slopes/apex when roof off, hide wall rectangles when walls off, hide gable triangles & gable wall band per their flags. Always keep the structural outline (rafters/legs) so the drawing still makes sense; only the colored lining fills/labels disappear.
+- `GableDiagram` — same gating for gable wall rect and gable triangles/infills.
+- `RoofPlanDiagram` — hide when roof is off (or show empty frame with "Roof not lined" caption).
+
+### Install panel
+
+`panelsBySection()` already reads from the gated `CalcResult` fields, so install times for excluded sections drop to 0 automatically — no changes needed beyond the calculator gating.
 
 ### Persistence
 
-- New Supabase table `install_time_defaults` — single editable row of global defaults (pattern matches `lining_pricing`).
-- Team config persists via existing per-job / localStorage paths.
+- `marquee_specs` table — add 5 nullable boolean columns (`line_roof`, `line_walls`, `line_gable_walls`, `line_gable_triangles`, `line_apex`), default `true`. Migration only.
+- `src/routes/jobs.$jobId.tsx` — load/save the new flags alongside existing spec fields.
+- `src/routes/calculator.tsx` — persist in localStorage with the rest of the input.
 
 ### Files to change
 
-- `src/lib/calculator.ts` — add `InstallInput`, `InstallResult`, `calculateInstall()`
-- `src/components/InstallPanel.tsx` — new component (inputs + results)
-- `src/components/CalculatorPanel.tsx` — add **Install & Labour** tab, render `<InstallPanel />` inside it
-- `src/routes/calculator.tsx` & `src/routes/jobs.$jobId.tsx` — wire install state through
-- New migration — `install_time_defaults` table seeded with defaults
+- `src/lib/calculator.ts` — extend `CalcInput`, `DEFAULT_INPUT`, gate outputs in `calculate()`
+- `src/components/CalculatorPanel.tsx` — new "Sections to line" toggle group
+- `src/components/BayDiagram.tsx`, `GableDiagram.tsx`, `RoofPlanDiagram.tsx` — conditional rendering per flag
+- `src/routes/calculator.tsx`, `src/routes/jobs.$jobId.tsx` — wire new inputs
+- New migration — add 5 boolean columns to `marquee_specs`
 
 ### Out of scope
 
-- Cost / labour rates (later phase)
-- Crew skill / ramp-up factor, travel, weather contingency
-- Per-job override of time-per-panel defaults (global only for now)
+- Per-bay section selection (e.g. line only bays 1–3 of the roof)
+- Partial-wall lining (e.g. only one long side)
+- Recalculating structural geometry — outlines/dimensions in diagrams stay the same regardless of which lining is selected
 
