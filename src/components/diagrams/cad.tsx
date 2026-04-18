@@ -38,7 +38,7 @@ interface DimLineProps {
 }
 
 /** Dimension line with arrowheads at both ends and a centred label. */
-export function DimLine({ x1, y1, x2, y2, label, offset = 0.18, fontSize = CAD_FONT_SM }: DimLineProps) {
+export function DimLine({ x1, y1, x2, y2, label, offset = 0.45, fontSize = CAD_FONT_SM }: DimLineProps) {
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy) || 1;
