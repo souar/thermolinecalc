@@ -160,6 +160,8 @@ function JobPage() {
       <CalculatorPanel
         value={input}
         onChange={setInput}
+        install={install}
+        onInstallChange={setInstall}
         pricing={
           linePrice
             ? {
