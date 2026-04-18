@@ -27,9 +27,9 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
 
   const totalH = eaveHeight + ridgeHeight;
   const padL = 4;
-  const padR = 9; // room for dimension + legend
+  const padR = 13; // dim lines + legend
   const padT = 2;
-  const padB = 4;
+  const padB = 4.5;
   const vbW = width + padL + padR;
   const vbH = totalH + padT + padB;
   const ox = padL;
