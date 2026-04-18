@@ -165,9 +165,9 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
           ))}
 
           {/* 250mm seal callout */}
-          <text x={ox - 1.0} y={groundY - 0.15} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
-            <tspan x={ox - 1.0} dy="0">250mm</tspan>
-            <tspan x={ox - 1.0} dy="1.1em">floor seal</tspan>
+          <text x={ox - 3} y={groundY - 0.3} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
+            <tspan x={ox - 3} dy="0">250mm</tspan>
+            <tspan x={ox - 3} dy="1.1em">floor seal</tspan>
           </text>
 
           {/* Eave height dimension */}
