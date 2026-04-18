@@ -183,23 +183,25 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             );
           })}
 
-          {/* Apex cap — flush triangular cap sitting on the ridge, sharing corners with rafters */}
-          <polygon
-            points={`${apexLeftX},${apexBaseY} ${apexRightX},${apexBaseY} ${midX},${ridgeY}`}
-            fill={CAD_COLORS.fillApex}
-            stroke={CAD_COLORS.beam}
-            strokeWidth={CAD_STROKE}
-            strokeLinejoin="round"
-          />
-          {/* Pink edge highlight on the two sloping apex edges */}
-          <line x1={apexLeftX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
-          <line x1={apexRightX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
-          {/* Tick marks at apex-to-rafter joins */}
-          <TickMark x={apexLeftX} y={apexBaseY} angle={45} />
-          <TickMark x={apexRightX} y={apexBaseY} angle={135} />
+          {/* Apex cap — only when roof + apex are lined */}
+          {input.lineRoof !== false && input.lineApex !== false && apexWidth > 1e-6 && (
+            <>
+              <polygon
+                points={`${apexLeftX},${apexBaseY} ${apexRightX},${apexBaseY} ${midX},${ridgeY}`}
+                fill={CAD_COLORS.fillApex}
+                stroke={CAD_COLORS.beam}
+                strokeWidth={CAD_STROKE}
+                strokeLinejoin="round"
+              />
+              <line x1={apexLeftX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
+              <line x1={apexRightX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
+              <TickMark x={apexLeftX} y={apexBaseY} angle={45} />
+              <TickMark x={apexRightX} y={apexBaseY} angle={135} />
+            </>
+          )}
 
-          {/* Wall stack labels (centered between stacks) */}
-          {[leftX, rightX].map((x, side) => (
+          {/* Wall stack labels (centered between stacks) — only when walls are lined */}
+          {input.lineWalls !== false && [leftX, rightX].map((x, side) => (
             <g key={`wlab${side}`}>
               {Array.from({ length: wallStacks }).map((_, i) => {
                 const stackY = groundY - (i + 0.5) * panelH;
@@ -225,13 +227,15 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
                 />
               )}
               {/* Rafter flap label rotated along leg */}
-              <PartLabel
-                x={x + (side === 0 ? -0.45 : 0.45)}
-                y={(groundY + eaveY) / 2}
-                label="rafter flap"
-                code={`${input.rafterFlapWidth ?? 0.4}×${input.roofRafterLength ?? 10}m`}
-                rotate={90}
-              />
+              {input.legRaftersEnabled && (
+                <PartLabel
+                  x={x + (side === 0 ? -0.45 : 0.45)}
+                  y={(groundY + eaveY) / 2}
+                  label="rafter flap"
+                  code={`${input.rafterFlapWidth ?? 0.4}×${input.roofRafterLength ?? 10}m`}
+                  rotate={90}
+                />
+              )}
             </g>
           ))}
 
