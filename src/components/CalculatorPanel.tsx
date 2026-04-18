@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { CalcInput, CalcResult, LINING_TYPES, calculate, fmt } from "@/lib/calculator";
+import {
+  CalcInput,
+  CalcResult,
+  DEFAULT_INSTALL_INPUT,
+  InstallInput,
+  LINING_TYPES,
+  calculate,
+  fmt,
+} from "@/lib/calculator";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +19,7 @@ import { AlertTriangle, HardHat, Factory, LayoutDashboard, Ruler } from "lucide-
 import { BayDiagram } from "./BayDiagram";
 import { GableDiagram } from "./GableDiagram";
 import { RoofPlanDiagram } from "./RoofPlanDiagram";
+import { InstallPanel } from "./InstallPanel";
 import { LINING_TYPES as LT } from "@/lib/calculator";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
