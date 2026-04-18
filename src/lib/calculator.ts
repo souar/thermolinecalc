@@ -487,6 +487,11 @@ export const DEFAULT_INPUT: CalcInput = {
   legRaftersEnabled: false,
   rafterFlapWidth: 0.4,
   roofRafterLength: 10,
+  lineRoof: true,
+  lineWalls: true,
+  lineGableWalls: true,
+  lineGableTriangles: true,
+  lineApex: true,
 };
 
 export function fmt(n: number, dp = 2): string {
