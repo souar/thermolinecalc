@@ -64,6 +64,7 @@ export interface CalcResult {
   // roof (full panels only)
   roofM2: number;
   roofPanels: number;
+  roofPanelsPerSide: number;
   roofPanelHeight: number;
   wallPanelHeight: number;
   customRoofEave: CustomInfill | null;
@@ -449,6 +450,7 @@ export function calculate(input: CalcInput): CalcResult {
     customWallInfill,
     roofM2,
     roofPanels,
+    roofPanelsPerSide,
     roofPanelHeight,
     wallPanelHeight,
     customRoofEave,
