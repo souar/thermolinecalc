@@ -51,7 +51,7 @@ export function RoofPlanDiagram({ input, result }: Props) {
 
   // Build the band stack for ONE side (eave → ridge), then mirror for the other side.
   // Each band: { kind, slopeH (m along slope), label }
-  type Band = { kind: "panel" | "eaveCut" | "apexHalf"; slopeH: number; label: string };
+  type Band = { kind: "panel" | "eaveCut" | "apex"; slopeH: number; label: string };
   const sideBands: Band[] = [];
 
   const hasEaveCut = !!customRoofEave && customRoofEave.height > 1e-6;
@@ -64,17 +64,10 @@ export function RoofPlanDiagram({ input, result }: Props) {
     sideBands.push({ kind: "panel", slopeH: fullPanelSlopeH, label: "Roof panel" });
   }
 
-  // Apex split as two halves (one on each side of the centreline) so the
-  // band stack mirrors symmetrically around the ridge.
-  const apexHalfSlope = apexWidth > 1e-6 ? apexWidth / 2 / projScale : 0; // convert plan-m apex to slope-m equivalent? apexWidth is along slope already.
-  // NOTE: apexWidth is the strip width measured ALONG the slope (panel-strip), so use directly.
-  const apexHalfSlopeDirect = apexWidth > 1e-6 ? apexWidth / 2 : 0;
-
-  // Full stack eave→ridge→eave
+  // Apex is a single continuous strip along the ridge (apexWidth is measured along the slope).
   const fullStack: Band[] = [
     ...sideBands,
-    ...(apexHalfSlopeDirect > 0 ? [{ kind: "apexHalf" as const, slopeH: apexHalfSlopeDirect, label: "Apex" }] : []),
-    ...(apexHalfSlopeDirect > 0 ? [{ kind: "apexHalf" as const, slopeH: apexHalfSlopeDirect, label: "Apex" }] : []),
+    ...(apexWidth > 1e-6 ? [{ kind: "apex" as const, slopeH: apexWidth, label: "Apex" }] : []),
     ...[...sideBands].reverse(),
   ];
 
@@ -115,7 +108,7 @@ export function RoofPlanDiagram({ input, result }: Props) {
           {/* Band fills */}
           {bandsScaled.map((b, i) => {
             const fill =
-              b.kind === "apexHalf"
+              b.kind === "apex"
                 ? CAD_COLORS.fillApex
                 : b.kind === "eaveCut"
                   ? CAD_COLORS.fillKeder
