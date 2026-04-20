@@ -9,12 +9,13 @@ interface Props {
 
 /**
  * Top-down roof plan: shows the full marquee footprint divided into bays
- * (vertical columns) and roof zones (horizontal bands from eave → ridge → eave),
- * with X-pattern bracing and dimension callouts on bottom and left.
+ * (vertical columns) and roof zones (horizontal bands from eave → ridge → eave).
+ * Bands are computed dynamically from `roofPanelsPerSide`, `customRoofEave`
+ * and `apexWidth` so the diagram matches the actual lining quantities.
  */
 export function RoofPlanDiagram({ input, result }: Props) {
-  const { length, width, baySize } = input;
-  const { bays, slopeLength, apexWidth } = result;
+  const { length, width, baySize, panelH: panelHInput } = input;
+  const { bays, slopeLength, apexWidth, roofPanelsPerSide, roofPanelHeight, customRoofEave } = result;
 
   if (input.lineRoof === false) {
     return (
@@ -38,7 +39,6 @@ export function RoofPlanDiagram({ input, result }: Props) {
   const padT = 3;
   const padB = 5;
 
-  // Use length × width directly as svg coords (metres).
   const planW = length;
   const planH = width;
   const vbW = planW + padL + padR;
@@ -46,32 +46,62 @@ export function RoofPlanDiagram({ input, result }: Props) {
   const ox = padL;
   const oy = padT;
 
-  // Roof bands (top→bottom in plan view): lower-roof (eave), upper-roof, apex ridge, upper-roof, lower-roof (eave).
-  // Each band's plan-projected width = (slope segment length × width / slopeLength).
-  const apexPlan = (apexWidth / 2) * (width / slopeLength) * 2; // total apex band
-  const remaining = (planH - apexPlan) / 2; // each side
-  const lowerBand = remaining * 0.55;
-  const upperBand = remaining * 0.45;
+  // Plan-projection scale: slope-metres → plan-metres along the width axis.
+  const projScale = slopeLength > 0 ? width / (2 * slopeLength) : 1;
 
-  const yEaveTop = oy;
-  const yLowerToUpper = oy + lowerBand;
-  const yUpperToApex = oy + lowerBand + upperBand;
-  const yApexToUpper = yUpperToApex + apexPlan;
-  const yUpperToLower = yApexToUpper + upperBand;
-  const yEaveBot = oy + planH;
+  // Build the band stack for ONE side (eave → ridge), then mirror for the other side.
+  // Each band: { kind, slopeH (m along slope), label }
+  type Band = { kind: "panel" | "eaveCut" | "apexHalf"; slopeH: number; label: string };
+  const sideBands: Band[] = [];
 
-  const bandLetters = ["A", "B", "C", "D", "E"];
-  const bandYs = [
-    (yEaveTop + yLowerToUpper) / 2,
-    (yLowerToUpper + yUpperToApex) / 2,
-    (yUpperToApex + yApexToUpper) / 2,
-    (yApexToUpper + yUpperToLower) / 2,
-    (yUpperToLower + yEaveBot) / 2,
+  const hasEaveCut = !!customRoofEave && customRoofEave.height > 1e-6;
+  const fullPanelSlopeH = roofPanelsPerSide === 1 && !hasEaveCut ? roofPanelHeight : (panelHInput ?? roofPanelHeight);
+
+  if (hasEaveCut) {
+    sideBands.push({ kind: "eaveCut", slopeH: customRoofEave!.height, label: "Eave cut" });
+  }
+  for (let i = 0; i < roofPanelsPerSide; i++) {
+    sideBands.push({ kind: "panel", slopeH: fullPanelSlopeH, label: "Roof panel" });
+  }
+
+  // Apex split as two halves (one on each side of the centreline) so the
+  // band stack mirrors symmetrically around the ridge.
+  const apexHalfSlope = apexWidth > 1e-6 ? apexWidth / 2 / projScale : 0; // convert plan-m apex to slope-m equivalent? apexWidth is along slope already.
+  // NOTE: apexWidth is the strip width measured ALONG the slope (panel-strip), so use directly.
+  const apexHalfSlopeDirect = apexWidth > 1e-6 ? apexWidth / 2 : 0;
+
+  // Full stack eave→ridge→eave
+  const fullStack: Band[] = [
+    ...sideBands,
+    ...(apexHalfSlopeDirect > 0 ? [{ kind: "apexHalf" as const, slopeH: apexHalfSlopeDirect, label: "Apex" }] : []),
+    ...(apexHalfSlopeDirect > 0 ? [{ kind: "apexHalf" as const, slopeH: apexHalfSlopeDirect, label: "Apex" }] : []),
+    ...[...sideBands].reverse(),
   ];
+
+  // Convert each band slope-height to plan-projection height (m) along the width axis.
+  const bandsPx = fullStack.map((b) => ({ ...b, planH: b.slopeH * projScale }));
+
+  // Normalise so the stack exactly fills planH (handles rounding / overhang).
+  const totalPlanH = bandsPx.reduce((s, b) => s + b.planH, 0);
+  const scale = totalPlanH > 0 ? planH / totalPlanH : 1;
+  const bandsScaled = bandsPx.map((b) => ({ ...b, planH: b.planH * scale }));
+
+  // Compute Y boundaries.
+  const ys: number[] = [oy];
+  for (const b of bandsScaled) ys.push(ys[ys.length - 1] + b.planH);
 
   const bayJunctionXs = Array.from({ length: bays + 1 }).map((_, i) => ox + i * baySize);
 
-  const tags = ["RB", "VB", "NB", "NB", "NB", "NB", "VB", "RB"];
+  // Letter labels A, B, C... for each band
+  const letterFor = (i: number) => String.fromCharCode(65 + i);
+
+  // Legend: only show what's present
+  const legendItems = [
+    { color: CAD_COLORS.fillLowerRoof, label: "Roof Panel" },
+    ...(apexWidth > 1e-6 ? [{ color: CAD_COLORS.fillApex, label: "Apex Ridge" }] : []),
+    ...(hasEaveCut ? [{ color: CAD_COLORS.fillKeder, label: "Eave Cut" }] : []),
+    { color: CAD_COLORS.fillKeder, label: "Keder Track" },
+  ];
 
   return (
     <Card>
@@ -82,23 +112,29 @@ export function RoofPlanDiagram({ input, result }: Props) {
       </CardHeader>
       <CardContent>
         <CadFrame vbW={vbW} vbH={vbH}>
-          {/* Color band fills */}
-          <rect x={ox} y={yEaveTop} width={planW} height={lowerBand} fill={CAD_COLORS.fillLowerRoof} />
-          <rect x={ox} y={yLowerToUpper} width={planW} height={upperBand} fill={CAD_COLORS.fillUpperRoof} />
-          <rect x={ox} y={yUpperToApex} width={planW} height={apexPlan} fill={CAD_COLORS.fillApex} />
-          <rect x={ox} y={yApexToUpper} width={planW} height={upperBand} fill={CAD_COLORS.fillUpperRoof} />
-          <rect x={ox} y={yUpperToLower} width={planW} height={lowerBand} fill={CAD_COLORS.fillLowerRoof} />
+          {/* Band fills */}
+          {bandsScaled.map((b, i) => {
+            const fill =
+              b.kind === "apexHalf"
+                ? CAD_COLORS.fillApex
+                : b.kind === "eaveCut"
+                  ? CAD_COLORS.fillKeder
+                  : CAD_COLORS.fillLowerRoof;
+            return (
+              <rect key={`band${i}`} x={ox} y={ys[i]} width={planW} height={b.planH} fill={fill} />
+            );
+          })}
 
           {/* Keder track strips along eaves */}
-          <rect x={ox} y={yEaveTop - 0.15} width={planW} height={0.15} fill={CAD_COLORS.fillKeder} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
-          <rect x={ox} y={yEaveBot} width={planW} height={0.15} fill={CAD_COLORS.fillKeder} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
+          <rect x={ox} y={oy - 0.15} width={planW} height={0.15} fill={CAD_COLORS.fillKeder} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
+          <rect x={ox} y={oy + planH} width={planW} height={0.15} fill={CAD_COLORS.fillKeder} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
 
           {/* Outer outline */}
           <rect x={ox} y={oy} width={planW} height={planH} fill="none" stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE} />
 
           {/* Horizontal band lines */}
-          {[yLowerToUpper, yUpperToApex, yApexToUpper, yUpperToLower].map((y, i) => (
-            <line key={`band${i}`} x1={ox} y1={y} x2={ox + planW} y2={y} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
+          {ys.slice(1, -1).map((y, i) => (
+            <line key={`bl${i}`} x1={ox} y1={y} x2={ox + planW} y2={y} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
           ))}
 
           {/* Bay vertical lines + X bracing per cell */}
@@ -108,8 +144,9 @@ export function RoofPlanDiagram({ input, result }: Props) {
           {Array.from({ length: bays }).map((_, b) => {
             const x1 = bayJunctionXs[b];
             const x2 = bayJunctionXs[b + 1];
-            return [yEaveTop, yLowerToUpper, yUpperToApex, yApexToUpper, yUpperToLower].map((yT, r) => {
-              const yB = [yLowerToUpper, yUpperToApex, yApexToUpper, yUpperToLower, yEaveBot][r];
+            return bandsScaled.map((_band, r) => {
+              const yT = ys[r];
+              const yB = ys[r + 1];
               return (
                 <g key={`x${b}-${r}`} opacity={0.35}>
                   <line x1={x1} y1={yT} x2={x2} y2={yB} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
@@ -119,9 +156,9 @@ export function RoofPlanDiagram({ input, result }: Props) {
             });
           })}
 
-          {/* Bay junction labels (top) — RB/VB/NB pattern */}
+          {/* Bay junction tags (top) — RB at ends, VB next, NB middle */}
           {bayJunctionXs.map((x, i) => {
-            const tag = i === 0 ? "RB" : i === bayJunctionXs.length - 1 ? "RB" : i === 1 || i === bayJunctionXs.length - 2 ? "VB" : "NB";
+            const tag = i === 0 || i === bayJunctionXs.length - 1 ? "RB" : i === 1 || i === bayJunctionXs.length - 2 ? "VB" : "NB";
             return (
               <text key={`tag${i}`} x={x} y={oy - 0.7} textAnchor="middle" fontSize={CAD_FONT_SM} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{tag}</text>
             );
@@ -132,10 +169,13 @@ export function RoofPlanDiagram({ input, result }: Props) {
             <text key={`bn${i}`} x={x} y={oy + planH + 0.8} textAnchor="middle" fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} style={{ fontFamily: "ui-monospace, monospace" }}>{i + 1}</text>
           ))}
 
-          {/* Band letters (left) */}
-          {bandLetters.map((l, i) => (
-            <text key={`bl${i}`} x={ox - 1} y={bandYs[i]} textAnchor="middle" dominantBaseline="middle" fontSize={CAD_FONT_SM} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{l}</text>
-          ))}
+          {/* Band letters (left, centred in each band) */}
+          {bandsScaled.map((_b, i) => {
+            const cy = (ys[i] + ys[i + 1]) / 2;
+            return (
+              <text key={`bll${i}`} x={ox - 1} y={cy} textAnchor="middle" dominantBaseline="middle" fontSize={CAD_FONT_SM} fill={CAD_COLORS.outline} fontWeight={600} style={{ fontFamily: "ui-sans-serif, system-ui" }}>{letterFor(i)}</text>
+            );
+          })}
 
           {/* Bottom dimension lines (per-bay) */}
           {Array.from({ length: bays }).map((_, b) => (
@@ -157,12 +197,17 @@ export function RoofPlanDiagram({ input, result }: Props) {
             label={`${fmt(length)}m`}
           />
 
-          {/* Left side dimensions per band */}
-          <DimLine x1={ox - 2.5} y1={yEaveTop} x2={ox - 2.5} y2={yLowerToUpper} label="A" />
-          <DimLine x1={ox - 2.5} y1={yLowerToUpper} x2={ox - 2.5} y2={yUpperToApex} label="B" />
-          <DimLine x1={ox - 2.5} y1={yUpperToApex} x2={ox - 2.5} y2={yApexToUpper} label="C" />
-          <DimLine x1={ox - 2.5} y1={yApexToUpper} x2={ox - 2.5} y2={yUpperToLower} label="D" />
-          <DimLine x1={ox - 2.5} y1={yUpperToLower} x2={ox - 2.5} y2={yEaveBot} label="E" />
+          {/* Left side dimensions per band — show actual band height in mm */}
+          {bandsScaled.map((b, i) => (
+            <DimLine
+              key={`dl${i}`}
+              x1={ox - 2.5}
+              y1={ys[i]}
+              x2={ox - 2.5}
+              y2={ys[i + 1]}
+              label={`${letterFor(i)} ${Math.round(b.slopeH * 1000)}`}
+            />
+          ))}
           {/* Total width */}
           <DimLine x1={ox - 4.5} y1={oy} x2={ox - 4.5} y2={oy + planH} label={`${fmt(width)}m`} />
 
@@ -170,12 +215,7 @@ export function RoofPlanDiagram({ input, result }: Props) {
           <Legend
             x={vbW - padR + 0.3}
             y={padT + 0.2}
-            items={[
-              { color: CAD_COLORS.fillApex, label: "Apex Ridge" },
-              { color: CAD_COLORS.fillUpperRoof, label: "Upper Roof" },
-              { color: CAD_COLORS.fillLowerRoof, label: "Lower Roof" },
-              { color: CAD_COLORS.fillKeder, label: "Keder Track" },
-            ]}
+            items={legendItems}
             width={vbW - (vbW - padR + 0.3) - 0.3}
           />
 
