@@ -143,7 +143,10 @@ export function InstallPanel({ result, value, onChange }: Props) {
                   onChange={(e) => set("teams", Math.max(1, Math.floor(num(e.target.value))))}
                 />
               </Field>
-              <Field label={`People / team (min ${MIN_PEOPLE_PER_TEAM})`}>
+              <Field
+                label={`People / team (min ${MIN_PEOPLE_PER_TEAM})`}
+                hint={`Baseline ${MIN_PEOPLE_PER_TEAM} — extra people scale install time down proportionally`}
+              >
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -253,11 +256,12 @@ export function InstallPanel({ result, value, onChange }: Props) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
       {children}
+      {hint && <p className="text-[10px] leading-tight text-muted-foreground">{hint}</p>}
     </div>
   );
 }

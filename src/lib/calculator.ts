@@ -586,22 +586,21 @@ export function calculateInstall(result: CalcResult, input: InstallInput): Insta
   const hpd = Math.max(0.1, input.hoursPerDay || 8);
   const counts = panelsBySection(result);
 
+  // Time per panel is calibrated for a baseline team of MIN_PEOPLE_PER_TEAM.
+  // Adding people to a team scales install time down proportionally.
+  const teamScale = MIN_PEOPLE_PER_TEAM / people;
+
   const sections: InstallSectionResult[] = INSTALL_SECTIONS.map((s) => {
     const mpp = input.minutesPerPanel[s.key] ?? s.defaultMin;
     const panels = counts[s.key];
-    const hours = (panels * mpp) / 60;
-    // When parallelSections is true, teams can split across sections — section days = hours / (hpd * teams).
-    // When false, only one section at a time → section days = hours / hpd (still divided by teams within a section).
-    const days = input.parallelSections
-      ? hours / (hpd * teams)
-      : hours / (hpd * teams);
+    const hours = ((panels * mpp) / 60) * teamScale;
+    // Both modes currently divide by (hpd * teams); toggle is informational.
+    const days = hours / (hpd * teams);
     return { key: s.key, label: s.label, panels, minutesPerPanel: mpp, hours, days };
   });
 
   const totalPanels = sections.reduce((a, s) => a + s.panels, 0);
   const totalHours = sections.reduce((a, s) => a + s.hours, 0);
-  // With parallel, total = sum hours / (hpd*teams). Without parallel, sections run back-to-back → same arithmetic
-  // because team can only attack one section at a time anyway. Toggle currently informational.
   const totalDays = totalHours / (hpd * teams);
   const personHours = totalHours * people * teams;
   const panelsPerDayPerTeam = totalDays > 0 ? totalPanels / totalDays / teams : 0;
