@@ -2,14 +2,6 @@
 // All units in metres unless noted.
 // Billing model: m² = panel count × actual panel size (no trim discount).
 
-export const LINING_TYPES = [
-  { id: "MAL18 / Thermoline", panelW: 5, panelH: 5, weightPerM2: 0.18 },
-  { id: "MAL22", panelW: 5, panelH: 5, weightPerM2: 0.22 },
-  { id: "MAL30 / ThermoAcoustic", panelW: 3, panelH: 5, weightPerM2: 0.3 },
-] as const;
-
-export type LiningTypeId = (typeof LINING_TYPES)[number]["id"];
-
 export const SECTION_KEYS = [
   { key: 'roof', label: 'Roof' },
   { key: 'walls', label: 'Walls' },
@@ -29,7 +21,8 @@ export interface CalcInput {
   eaveHeight: number;
   pitchDeg: number;
   baySize: number;
-  liningType: LiningTypeId;
+  /** Variant id from lining_variants. May be empty when none selected. */
+  liningType: string;
   roofOverhangEnabled: boolean;
   wallFloorSealEnabled: boolean;
   apexOverride?: number | null;
@@ -157,9 +150,8 @@ export function calculate(input: CalcInput): CalcResult {
   const lineGableTriangles = input.lineGableTriangles !== false;
   const lineApex = input.lineApex !== false;
 
-  const liningDef = LINING_TYPES.find((l) => l.id === input.liningType) ?? LINING_TYPES[0];
-  const panelW = input.panelW && input.panelW > 0 ? input.panelW : liningDef.panelW;
-  const panelH = input.panelH && input.panelH > 0 ? input.panelH : liningDef.panelH;
+  const panelW = input.panelW && input.panelW > 0 ? input.panelW : 5;
+  const panelH = input.panelH && input.panelH > 0 ? input.panelH : 5;
   const panelArea = panelW * panelH;
 
   const warnings: string[] = [];
@@ -302,7 +294,7 @@ export function calculate(input: CalcInput): CalcResult {
   const halfW = width / 2;
   const slopePerM = halfW > 0 ? ridgeHeight / halfW : 0;
   const slicesPerHalf = Math.max(1, Math.ceil(halfW / baySize));
-  const wpm2 = weightPerM2 || liningDef.weightPerM2 || 0;
+  const wpm2 = weightPerM2 || 0;
   const maxPieceWeight = wpm2 > 0 ? panelW * panelH * wpm2 : Infinity;
 
   const gableTriSlices: Array<{ base: number; hInner: number; hOuter: number; pieces: GablePiece[] }> = [];
@@ -449,8 +441,9 @@ export function calculate(input: CalcInput): CalcResult {
     gableInfillCount +
     rafterPanels;
 
-  const totalWeightKg = totalM2 * (weightPerM2 || liningDef.weightPerM2);
-  const totalCost = totalM2 * costPerM2;
+  // totalWeightKg & totalCost no longer computed here — caller composes via calculateJobCosts.
+  const totalWeightKg = 0;
+  const totalCost = 0;
 
   return {
     slopeLength,
@@ -494,7 +487,7 @@ export const DEFAULT_INPUT: CalcInput = {
   eaveHeight: 3,
   pitchDeg: 18,
   baySize: 5,
-  liningType: "MAL18 / Thermoline",
+  liningType: "",
   roofOverhangEnabled: true,
   wallFloorSealEnabled: true,
   apexOverride: null,
@@ -627,3 +620,98 @@ export function calculateInstall(result: CalcResult, input: InstallInput): Insta
     panelsPerDayPerTeam,
   };
 }
+
+// ============================================================================
+// BOM-driven job costing
+// ============================================================================
+
+export function m2BySections(result: CalcResult, sections: SectionKey[] | null | undefined): number {
+  if (!sections || sections.length === 0) return result.totalM2;
+  let m2 = 0;
+  for (const s of sections) {
+    switch (s) {
+      case 'roof': m2 += result.roofM2; break;
+      case 'walls': m2 += result.wallsM2; break;
+      case 'gable_walls': m2 += result.gableWallsM2; break;
+      case 'gable_triangles': m2 += result.gableTriM2; break;
+      case 'apex': m2 += result.apexM2; break;
+      case 'eave': m2 += result.customRoofEave?.m2 ?? 0; break;
+      case 'wall_infill': m2 += result.customWallInfill?.m2 ?? 0; break;
+      case 'roof_rafters': m2 += result.roofRafterCovers?.m2 ?? 0; break;
+      case 'leg_rafters': m2 += result.legRafterCovers?.m2 ?? 0; break;
+    }
+  }
+  return m2;
+}
+
+export interface BomLine {
+  componentId: string;
+  componentName: string;
+  componentKind: 'sleeve' | 'material' | 'labour';
+  manufacturingStage: string | null;
+  unit: string;
+  costPerUnit: number;
+  qtyPerM2: number;
+  sections: SectionKey[] | null;
+  timeMinutesPerUnit: number | null;
+  m2PerUnit: number | null;
+  weightPerM2: number | null;
+  primarySupplierId: string | null;
+  primarySupplierName: string | null;
+}
+
+export interface ResolvedBomLine extends BomLine {
+  m2: number;
+  qty: number;
+  cost: number;
+  minutes: number;
+}
+
+export interface JobCostsResult {
+  lines: ResolvedBomLine[];
+  materialsCost: number;
+  labourCost: number;
+  totalCost: number;
+  totalWeightKg: number;
+  totalLabourMinutes: number;
+}
+
+export function calculateJobCosts(result: CalcResult, bom: BomLine[]): JobCostsResult {
+  const lines: ResolvedBomLine[] = [];
+  let materialsCost = 0;
+  let labourCost = 0;
+  let totalWeightKg = 0;
+  let totalLabourMinutes = 0;
+
+  for (const line of bom) {
+    const m2 = m2BySections(result, line.sections);
+    const qty = m2 * line.qtyPerM2;
+    const cost = qty * line.costPerUnit;
+    const minutes =
+      line.componentKind === 'labour'
+        ? qty * (line.timeMinutesPerUnit ?? 0)
+        : 0;
+
+    if (line.componentKind === 'labour') {
+      labourCost += cost;
+      totalLabourMinutes += minutes;
+    } else {
+      materialsCost += cost;
+      if (line.weightPerM2 != null) {
+        totalWeightKg += m2 * line.qtyPerM2 * line.weightPerM2;
+      }
+    }
+
+    lines.push({ ...line, m2, qty, cost, minutes });
+  }
+
+  return {
+    lines,
+    materialsCost,
+    labourCost,
+    totalCost: materialsCost + labourCost,
+    totalWeightKg,
+    totalLabourMinutes,
+  };
+}
+

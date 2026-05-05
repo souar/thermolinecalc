@@ -1,0 +1,13 @@
+-- PENDING MIGRATION — NOT YET APPLIED
+-- Drops the legacy lining_pricing table.
+--
+-- SAFE TO APPLY ONLY ONCE:
+--   1. All in-use lining_variants have BOM rows populated, AND
+--   2. The calculator + jobs save flow has been verified end-to-end
+--      against the new BOM-driven pricing in production.
+--
+-- Until then, keep this file unapplied; lining_pricing is no longer
+-- read by the app but remains for rollback safety. To apply, move
+-- this file into supabase/migrations/ with a fresh timestamp prefix
+-- and run via the Supabase migration tool.
+DROP TABLE IF EXISTS public.lining_pricing;

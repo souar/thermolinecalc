@@ -1,67 +1,100 @@
-## Plan: Replace `/pricing` with `/products` (variants editor)
 
-### 1. `src/lib/calculator.ts`
-Add (no other changes):
-```ts
-export const SECTION_KEYS = [
-  { key: 'roof', label: 'Roof' },
-  { key: 'walls', label: 'Walls' },
-  { key: 'gable_walls', label: 'Gable walls' },
-  { key: 'gable_triangles', label: 'Gable triangles' },
-  { key: 'apex', label: 'Apex' },
-  { key: 'eave', label: 'Eave' },
-  { key: 'wall_infill', label: 'Wall infill' },
-  { key: 'roof_rafters', label: 'Roof rafters' },
-  { key: 'leg_rafters', label: 'Leg rafters' },
-] as const;
-export type SectionKey = (typeof SECTION_KEYS)[number]['key'];
+## Goal
+
+Replace the hardcoded `LINING_TYPES` pricing model with database-driven lining variants whose Bills of Materials (BOMs) drive cost, weight, and labour. Costs become section-aware: each BOM line targets specific sections (or all) and is charged against that section's m².
+
+## 1. `src/lib/calculator.ts` changes
+
+- **Remove** the `LINING_TYPES` constant export and `LiningTypeId` type.
+- **Change** `CalcInput.liningType` from `LiningTypeId` to `string` (variant id).
+- Keep `costPerM2`, `weightPerM2`, `panelW`, `panelH` on `CalcInput` for back-compat, but `costPerM2`/`weightPerM2` are no longer used by `calculate()` for cost/weight. `panelW`/`panelH` continue to drive geometry — populated from variant defaults by the caller.
+- Default `DEFAULT_INPUT.liningType` to `""`.
+- In `calculate()`:
+  - Stop reading `costPerM2`/`weightPerM2`. Set `totalCost = 0` and `totalWeightKg = 0` in the returned `CalcResult`.
+  - For gable-piece weight splitting (currently uses `weightPerM2`), fall back to `input.weightPerM2 ?? 0`. If 0 (no weight known yet), skip the per-piece weight cap (treat `maxPieceWeight = Infinity`) so geometry stays sensible without pricing data.
+  - Drop the `LINING_TYPES` lookup — `panelW`/`panelH` come purely from `input.panelW`/`input.panelH` with sensible fallbacks (e.g., 5×5 if both missing) to keep the function safe when called without a variant.
+- **Add** `m2BySections(result, sections)` helper exactly as specified.
+- **Add** `BomLine`, `ResolvedBomLine`, and `calculateJobCosts(result, bom)`:
+  - `materialsCost` = sum of cost across non-labour lines.
+  - `labourCost` = sum of cost across labour lines.
+  - `totalCost` = materials + labour.
+  - `totalWeightKg` = Σ over non-labour lines with `weightPerM2` set: `m2 × qtyPerM2 × weightPerM2`.
+  - `totalLabourMinutes` = Σ over labour lines: `qty × (timeMinutesPerUnit ?? 0)`.
+
+## 2. `src/components/CalculatorPanel.tsx` changes
+
+- Remove imports of `LINING_TYPES`, the `LT` alias, the `pricing`/`pricingAll` props and `PricingRow` interface.
+- Add a TanStack Query:
+  - `queryKey: ["lining_variants_with_bom"]`
+  - Fetches `lining_variants` where `active = true`, joining `lining_variant_components` and nested `components` and `components.suppliers` (primary supplier name).
+- Build a `Map<string, VariantWithBom>` from the query for O(1) lookup.
+- For the selected variant id (`value.liningType`):
+  - Derive `panelW`/`panelH` from `default_panel_width`/`default_panel_height`.
+  - Build `BomLine[]` from joined rows.
+  - Run `calculate({ ...value, panelW, panelH, weightPerM2: <approx blended weightPerM2 from BOM materials, used only for gable splitting> })`.
+  - Run `calculateJobCosts(result, bom)`.
+- Replace all `costPerM2 * m2` and `weightPerM2 * m2` math in `mkRow` with per-line resolved values from `calculateJobCosts`. Section tables show row m² and a per-section cost contribution sourced from BOM lines targeting that section (plus their share of "all sections" lines, scaled by `sectionM2 / totalM2`).
+- Stat cards read from `calculateJobCosts` (`totalCost`, `totalWeightKg`) and surface `totalLabourMinutes` (replace cost stat caption "(set price)" with "(no variant)" when none selected).
+- The **Lining type** Select renders from the variants query. Each option label: `{name} (£{baseCostPerM2}/m² base + N section costs)` where `baseCostPerM2 = sum(costPerUnit * qtyPerM2)` over BOM lines whose `sections` is null/empty, and N = count of distinct section keys mentioned across the variant's other BOM lines.
+
+## 3. `src/routes/calculator.tsx`
+
+- Remove `pricingQ` (the `lining_pricing` query) and the `pricing`/`pricingAll` props passed to `CalculatorPanel`.
+- Pass `value`/`onChange`/`install`/`onInstallChange` only. The panel handles variant fetching itself.
+
+## 4. `src/routes/jobs.$jobId.tsx`
+
+- Remove `pricingQ` and the `pricing`/`pricingAll` props.
+- The save mutation must:
+  - Look up the selected variant (by id from `input.liningType`) via a fresh query against `lining_variants_with_bom` (use `queryClient.getQueryData(["lining_variants_with_bom"])` cache, fallback to refetch).
+  - Build the BOM, run `calculate(input)` then `calculateJobCosts(result, bom)`.
+  - Save `total_cost`, `total_weight_kg`, and `breakdown_json: { ...result, jobCosts }` to `lining_results`.
+  - Save `lining_type` in `marquee_specs` as the **variant name** (string) — not the id — for compatibility with old saved rows.
+- On hydrate from the latest spec, look up the variant by `name` from the cache and set `input.liningType = variant.id`. If none found, leave `liningType = ""`.
+- Disable the **Save revision** button while `input.liningType === ""` or while the variants query is loading.
+
+## 5. `/products/$variantId` reference cost card
+
+In `src/routes/products.$variantId.tsx`, add a **"Reference total cost"** Card next to the existing per-m² breakdown panel:
+
+- Build a `BomLine[]` from the current variant's BOM rows.
+- Call `calculate(DEFAULT_INPUT)` then `calculateJobCosts(result, bom)`.
+- Display:
+  - Total cost
+  - Total m²
+  - Blended cost / m² (`totalCost / totalM2`)
+  - Materials breakdown (per line: name, m², qty, cost)
+  - Labour breakdown (per line: name, m², qty, minutes, cost)
+- Caption: *"Reference: 50×30m at 18° pitch with all sections lined"*.
+
+## 6. Follow-up migration (created, not run)
+
+Create `supabase/migrations/<timestamp>_drop_lining_pricing.sql` containing:
+
+```sql
+-- Drops the legacy lining_pricing table.
+-- SAFE TO APPLY ONLY ONCE:
+--   1. All in-use lining_variants have BOM rows populated, AND
+--   2. The calculator + jobs save flow has been verified end-to-end against
+--      the new BOM-driven pricing in production.
+-- Until then, keep this file unapplied; lining_pricing is no longer read by
+-- the app but remains for rollback safety.
+DROP TABLE IF EXISTS public.lining_pricing;
 ```
 
-### 2. Routes
-- **Delete** `src/routes/pricing.tsx` and replace with a redirect-only route:
-  ```ts
-  export const Route = createFileRoute('/pricing')({
-    beforeLoad: () => { throw redirect({ to: '/products' }); },
-  });
-  ```
-- **Create** `src/routes/products.tsx` — list page.
-- **Create** `src/routes/products.$variantId.tsx` — detail page.
+Do NOT run this migration in this iteration.
 
-### 3. `/products` list page
-- Query `["lining_variants"]`: select variants + nested `lining_variant_components(qty_per_m2, sections, components(cost_per_unit))` to compute base cost/m² and section-specific line counts client-side.
-- Columns: Name, Default panel size (`w × h m`), Base cost/m² (Σ qty_per_m2 × cost_per_unit where `sections` null/empty), # section-specific BOM lines, Active Switch (mutates `active`), "View / Edit" button → navigates to `/products/$variantId`.
-- "+ New variant" Dialog fields: name, description, default_panel_width, default_panel_height, notes. Insert into `lining_variants` with `created_by = getUsername()`, then navigate to detail page.
+## Files touched
 
-### 4. `/products/$variantId` detail page
-Layout: 2-col grid (BOM card left, summary card right), header bar above.
+- `src/lib/calculator.ts` (modify)
+- `src/components/CalculatorPanel.tsx` (modify)
+- `src/routes/calculator.tsx` (modify)
+- `src/routes/jobs.$jobId.tsx` (modify)
+- `src/routes/products.$variantId.tsx` (add reference cost card)
+- `supabase/migrations/<ts>_drop_lining_pricing.sql` (new, unapplied)
 
-**Header**: variant name, `width × height m`, "Edit details" Dialog (name, description, panel w/h, active Switch, notes) → updates `lining_variants` with `updated_by`.
+## Notes
 
-**Bill of materials Card**:
-- Query `["lining_variant_components", variantId]`: `select('*, components(*)').eq('variant_id', variantId).order('sort_order')`.
-- Query `["components"]` for the picker.
-- Table columns: Component name, Kind Badge, Sections (chips per section label, or "All sections" chip if null/empty array), Qty/m², Unit (from component), Cost/unit, Cost/m² (`qty_per_m2 × cost_per_unit`), Stage (`manufacturing_stage`), Edit, Remove.
-- "+ Add component" button opens Dialog (also reused for Edit).
-
-**Add/Edit BOM Dialog**:
-- Component `Select` grouped by kind (`sleeve` / `material` / `labour`); each item shows `name — £cost/unit`.
-- Two linked numeric inputs: `qty_per_panel` and `qty_per_m2`, with editable `panel_m2` denominator (default `variant.default_panel_width * variant.default_panel_height`). Local state holds all three; editing `qty_per_panel` recomputes `qty_per_m2 = qty_per_panel / panel_m2`; editing `qty_per_m2` recomputes `qty_per_panel = qty_per_m2 * panel_m2`; editing `panel_m2` keeps `qty_per_m2` fixed and recomputes `qty_per_panel`. Persist `qty_per_m2` and `panel_m2` to row.
-- Sections multi-select: checkbox list of `SECTION_KEYS` plus "All sections" option (mutually exclusive — selecting "All sections" clears array; selecting any specific deselects "All"). Stores `null` (empty) when "All sections".
-- `sort_order` numeric input.
-- `notes` textarea.
-- Live preview: `qty_per_m2 × component.cost_per_unit` £/m².
-- Insert/update `lining_variant_components`; invalidate `["lining_variant_components", variantId]` and `["lining_variants"]`.
-
-**Summary Card** (right):
-- Base cost/m² = Σ over BOM rows where `sections` is null/empty: `qty_per_m2 × component.cost_per_unit`.
-- Section breakdown: group section-specific rows by section key; render small table per section listing component name and £/m² of that section.
-
-### 5. `__root.tsx`
-Change the `/pricing` nav link label from "Pricing" to "Products" and update `to="/products"`.
-
-### 6. `src/integrations/supabase/types.ts`
-Auto-regenerated; no manual edits needed (tables already exist from prior migration).
-
-### Files
-- Edit: `src/lib/calculator.ts`, `src/routes/__root.tsx`, `src/routes/pricing.tsx` (becomes redirect).
-- Create: `src/routes/products.tsx`, `src/routes/products.$variantId.tsx`.
+- `src/integrations/supabase/types.ts` is up to date — no schema change in this prompt.
+- `lining_pricing` is left in place; only the app stops reading from it.
+- `weightPerM2` on `CalcInput` is repurposed as an optional hint to keep gable-piece weight splitting working; the canonical weight comes from `calculateJobCosts`.

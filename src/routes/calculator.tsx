@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { CalculatorPanel } from "@/components/CalculatorPanel";
 import { CalcInput, DEFAULT_INPUT, DEFAULT_INSTALL_INPUT, InstallInput } from "@/lib/calculator";
 
@@ -32,18 +30,7 @@ function QuickCalc() {
   }, [input]);
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem(INSTALL_KEY, JSON.stringify(install));
-  }, [install]);
-
-  const pricingQ = useQuery({
-    queryKey: ["pricing"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("lining_pricing").select("*");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const linePrice = pricingQ.data?.find((p) => p.lining_type === input.liningType);
+  }, [install, install]);
 
   return (
     <div className="space-y-6">
@@ -56,17 +43,6 @@ function QuickCalc() {
         onChange={setInput}
         install={install}
         onInstallChange={setInstall}
-        pricing={
-          linePrice
-            ? {
-                cost_per_m2: Number(linePrice.cost_per_m2),
-                weight_per_m2: linePrice.weight_per_m2 != null ? Number(linePrice.weight_per_m2) : null,
-                panel_width: Number(linePrice.panel_width),
-                panel_height: Number(linePrice.panel_height),
-              }
-            : null
-        }
-        pricingAll={pricingQ.data ?? []}
       />
     </div>
   );
