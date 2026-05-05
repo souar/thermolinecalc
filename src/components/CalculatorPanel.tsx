@@ -325,11 +325,15 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
                   </Select>
                 </Field>
                 <Field label="Lining type">
-                  <Select value={value.liningType} onValueChange={(v) => set("liningType", v as CalcInput["liningType"])}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select value={value.liningType || undefined} onValueChange={(v) => set("liningType", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={variantsQ.isLoading ? "Loading…" : "Select a variant"} />
+                    </SelectTrigger>
                     <SelectContent>
-                      {LINING_TYPES.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>{l.id} ({l.panelW}×{l.panelH}m)</SelectItem>
+                      {variants.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.name} (£{v.baseCostPerM2.toFixed(2)}/m² base + {v.sectionKeysCount} section costs)
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
