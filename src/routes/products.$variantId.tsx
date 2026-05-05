@@ -36,7 +36,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { getUsername } from "@/lib/username";
 import { toast } from "sonner";
-import { SECTION_KEYS, type SectionKey } from "@/lib/calculator";
+import { SECTION_KEYS, type SectionKey, calculate, calculateJobCosts, DEFAULT_INPUT, type BomLine } from "@/lib/calculator";
 
 export const Route = createFileRoute("/products/$variantId")({
   component: ProductDetail,
