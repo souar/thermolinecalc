@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SuppliersRouteImport } from './routes/suppliers'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as ComponentsRouteImport } from './routes/components'
 import { Route as CalculatorRouteImport } from './routes/calculator'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs.$jobId'
@@ -24,6 +25,11 @@ const SuppliersRoute = SuppliersRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComponentsRoute = ComponentsRouteImport.update({
+  id: '/components',
+  path: '/components',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CalculatorRoute = CalculatorRouteImport.update({
@@ -50,6 +56,7 @@ const CustomersCustomerIdRoute = CustomersCustomerIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calculator': typeof CalculatorRoute
+  '/components': typeof ComponentsRoute
   '/pricing': typeof PricingRoute
   '/suppliers': typeof SuppliersRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calculator': typeof CalculatorRoute
+  '/components': typeof ComponentsRoute
   '/pricing': typeof PricingRoute
   '/suppliers': typeof SuppliersRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calculator': typeof CalculatorRoute
+  '/components': typeof ComponentsRoute
   '/pricing': typeof PricingRoute
   '/suppliers': typeof SuppliersRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/calculator'
+    | '/components'
     | '/pricing'
     | '/suppliers'
     | '/customers/$customerId'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/calculator'
+    | '/components'
     | '/pricing'
     | '/suppliers'
     | '/customers/$customerId'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/calculator'
+    | '/components'
     | '/pricing'
     | '/suppliers'
     | '/customers/$customerId'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalculatorRoute: typeof CalculatorRoute
+  ComponentsRoute: typeof ComponentsRoute
   PricingRoute: typeof PricingRoute
   SuppliersRoute: typeof SuppliersRoute
   CustomersCustomerIdRoute: typeof CustomersCustomerIdRoute
@@ -122,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/components': {
+      id: '/components'
+      path: '/components'
+      fullPath: '/components'
+      preLoaderRoute: typeof ComponentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/calculator': {
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalculatorRoute: CalculatorRoute,
+  ComponentsRoute: ComponentsRoute,
   PricingRoute: PricingRoute,
   SuppliersRoute: SuppliersRoute,
   CustomersCustomerIdRoute: CustomersCustomerIdRoute,
