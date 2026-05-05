@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SuppliersRouteImport } from './routes/suppliers'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as CalculatorRouteImport } from './routes/calculator'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs.$jobId'
 import { Route as CustomersCustomerIdRouteImport } from './routes/customers.$customerId'
 
+const SuppliersRoute = SuppliersRouteImport.update({
+  id: '/suppliers',
+  path: '/suppliers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calculator': typeof CalculatorRoute
   '/pricing': typeof PricingRoute
+  '/suppliers': typeof SuppliersRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calculator': typeof CalculatorRoute
   '/pricing': typeof PricingRoute
+  '/suppliers': typeof SuppliersRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
 }
@@ -60,6 +68,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/calculator': typeof CalculatorRoute
   '/pricing': typeof PricingRoute
+  '/suppliers': typeof SuppliersRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
 }
@@ -69,6 +78,7 @@ export interface FileRouteTypes {
     | '/'
     | '/calculator'
     | '/pricing'
+    | '/suppliers'
     | '/customers/$customerId'
     | '/jobs/$jobId'
   fileRoutesByTo: FileRoutesByTo
@@ -76,6 +86,7 @@ export interface FileRouteTypes {
     | '/'
     | '/calculator'
     | '/pricing'
+    | '/suppliers'
     | '/customers/$customerId'
     | '/jobs/$jobId'
   id:
@@ -83,6 +94,7 @@ export interface FileRouteTypes {
     | '/'
     | '/calculator'
     | '/pricing'
+    | '/suppliers'
     | '/customers/$customerId'
     | '/jobs/$jobId'
   fileRoutesById: FileRoutesById
@@ -91,12 +103,20 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalculatorRoute: typeof CalculatorRoute
   PricingRoute: typeof PricingRoute
+  SuppliersRoute: typeof SuppliersRoute
   CustomersCustomerIdRoute: typeof CustomersCustomerIdRoute
   JobsJobIdRoute: typeof JobsJobIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/suppliers': {
+      id: '/suppliers'
+      path: '/suppliers'
+      fullPath: '/suppliers'
+      preLoaderRoute: typeof SuppliersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pricing': {
       id: '/pricing'
       path: '/pricing'
@@ -139,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalculatorRoute: CalculatorRoute,
   PricingRoute: PricingRoute,
+  SuppliersRoute: SuppliersRoute,
   CustomersCustomerIdRoute: CustomersCustomerIdRoute,
   JobsJobIdRoute: JobsJobIdRoute,
 }

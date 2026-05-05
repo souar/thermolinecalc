@@ -14,6 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
+      component_supplier_prices: {
+        Row: {
+          component_id: string
+          cost_per_unit: number
+          created_at: string
+          id: string
+          is_preferred: boolean
+          lead_time_days: number | null
+          notes: string | null
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          component_id: string
+          cost_per_unit: number
+          created_at?: string
+          id?: string
+          is_preferred?: boolean
+          lead_time_days?: number | null
+          notes?: string | null
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          component_id?: string
+          cost_per_unit?: number
+          created_at?: string
+          id?: string
+          is_preferred?: boolean
+          lead_time_days?: number | null
+          notes?: string | null
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "component_supplier_prices_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "component_supplier_prices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      components: {
+        Row: {
+          active: boolean
+          cost_per_unit: number
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: Database["public"]["Enums"]["component_kind"]
+          m2_per_unit: number | null
+          manufacturing_stage: string | null
+          name: string
+          notes: string | null
+          panel_height: number | null
+          panel_width: number | null
+          primary_supplier_id: string | null
+          sku: string | null
+          time_minutes_per_unit: number | null
+          unit: string
+          updated_at: string
+          updated_by: string | null
+          weight_per_m2: number | null
+        }
+        Insert: {
+          active?: boolean
+          cost_per_unit?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["component_kind"]
+          m2_per_unit?: number | null
+          manufacturing_stage?: string | null
+          name: string
+          notes?: string | null
+          panel_height?: number | null
+          panel_width?: number | null
+          primary_supplier_id?: string | null
+          sku?: string | null
+          time_minutes_per_unit?: number | null
+          unit: string
+          updated_at?: string
+          updated_by?: string | null
+          weight_per_m2?: number | null
+        }
+        Update: {
+          active?: boolean
+          cost_per_unit?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["component_kind"]
+          m2_per_unit?: number | null
+          manufacturing_stage?: string | null
+          name?: string
+          notes?: string | null
+          panel_height?: number | null
+          panel_width?: number | null
+          primary_supplier_id?: string | null
+          sku?: string | null
+          time_minutes_per_unit?: number | null
+          unit?: string
+          updated_at?: string
+          updated_by?: string | null
+          weight_per_m2?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "components_primary_supplier_id_fkey"
+            columns: ["primary_supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string
@@ -207,6 +332,102 @@ export type Database = {
           },
         ]
       }
+      lining_variant_components: {
+        Row: {
+          component_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          panel_m2: number | null
+          qty_per_m2: number
+          sections: string[] | null
+          sort_order: number
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          component_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          panel_m2?: number | null
+          qty_per_m2?: number
+          sections?: string[] | null
+          sort_order?: number
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          component_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          panel_m2?: number | null
+          qty_per_m2?: number
+          sections?: string[] | null
+          sort_order?: number
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lining_variant_components_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lining_variant_components_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "lining_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lining_variants: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          default_panel_height: number | null
+          default_panel_width: number | null
+          description: string | null
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          default_panel_height?: number | null
+          default_panel_width?: number | null
+          description?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          default_panel_height?: number | null
+          default_panel_width?: number | null
+          description?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       marquee_specs: {
         Row: {
           apex_override: number | null
@@ -278,6 +499,48 @@ export type Database = {
           },
         ]
       }
+      suppliers: {
+        Row: {
+          active: boolean
+          address: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string
@@ -304,7 +567,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      component_kind: "sleeve" | "material" | "labour"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -431,6 +694,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      component_kind: ["sleeve", "material", "labour"],
+    },
   },
 } as const
