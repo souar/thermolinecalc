@@ -15,6 +15,8 @@ export const SECTION_KEYS = [
 ] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number]['key'];
 
+export type LiningTypeId = string;
+
 export interface CalcInput {
   length: number;
   width: number;
