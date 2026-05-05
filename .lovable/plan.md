@@ -1,48 +1,67 @@
-## /components admin route
+## Plan: Replace `/pricing` with `/products` (variants editor)
 
-### New file: `src/routes/components.tsx`
+### 1. `src/lib/calculator.ts`
+Add (no other changes):
+```ts
+export const SECTION_KEYS = [
+  { key: 'roof', label: 'Roof' },
+  { key: 'walls', label: 'Walls' },
+  { key: 'gable_walls', label: 'Gable walls' },
+  { key: 'gable_triangles', label: 'Gable triangles' },
+  { key: 'apex', label: 'Apex' },
+  { key: 'eave', label: 'Eave' },
+  { key: 'wall_infill', label: 'Wall infill' },
+  { key: 'roof_rafters', label: 'Roof rafters' },
+  { key: 'leg_rafters', label: 'Leg rafters' },
+] as const;
+export type SectionKey = (typeof SECTION_KEYS)[number]['key'];
+```
 
-Route at `/components` with three Tabs (Sleeves / Materials / Labour) over a shared component list filtered by `kind`.
+### 2. Routes
+- **Delete** `src/routes/pricing.tsx` and replace with a redirect-only route:
+  ```ts
+  export const Route = createFileRoute('/pricing')({
+    beforeLoad: () => { throw redirect({ to: '/products' }); },
+  });
+  ```
+- **Create** `src/routes/products.tsx` — list page.
+- **Create** `src/routes/products.$variantId.tsx` — detail page.
 
-**Queries**
-- `useQuery(["components"])` → all rows from `components` ordered by name; filtered client-side by active tab.
-- `useQuery(["suppliers", { active: true }])` → id+name list for joining and Select dropdowns.
-- `useQuery(["component_supplier_prices", componentId])` → loaded only when a row is expanded.
+### 3. `/products` list page
+- Query `["lining_variants"]`: select variants + nested `lining_variant_components(qty_per_m2, sections, components(cost_per_unit))` to compute base cost/m² and section-specific line counts client-side.
+- Columns: Name, Default panel size (`w × h m`), Base cost/m² (Σ qty_per_m2 × cost_per_unit where `sections` null/empty), # section-specific BOM lines, Active Switch (mutates `active`), "View / Edit" button → navigates to `/products/$variantId`.
+- "+ New variant" Dialog fields: name, description, default_panel_width, default_panel_height, notes. Insert into `lining_variants` with `created_by = getUsername()`, then navigate to detail page.
 
-**Per-tab table columns**
-- Common: expand toggle, Name, SKU, Unit, Cost/unit (£), Cost/m² (cost_per_unit / m2_per_unit, "—" if no m2_per_unit), Supplier (looked up from suppliers query), Active (Switch toggles via mutation), Edit.
-- Sleeves: + Panel W, Panel H, Weight kg/m².
-- Materials: + m²/unit, Weight kg/m².
-- Labour: + Manufacturing stage, Minutes/unit.
+### 4. `/products/$variantId` detail page
+Layout: 2-col grid (BOM card left, summary card right), header bar above.
 
-**New / Edit Dialog**
-- Fields rendered conditionally by kind:
-  - All: Name, SKU, Unit (Input with `<datalist>` of piece/m2/m/roll/hour/panel), Cost/unit, Notes, Active Switch.
-  - Sleeves & Materials: m²/unit, Weight per m², Primary supplier (Select sourced from suppliers query, with "—" option), Manufacturing stage (Select with the 6 conventional stage values plus "—").
-  - Sleeves only: Panel width, Panel height.
-  - Labour: Minutes/unit, Manufacturing stage (Select; required at submit time).
-- Below the Cost/unit input, a live helper line: "Cost per m²: £X.XX" computed from form values (or "—" when m2_per_unit is empty/zero).
-- Submit upserts via `supabase.from("components").insert/update`, sets `created_by`/`updated_by` to `getUsername()`, kind-irrelevant fields are nulled out (e.g. labour rows don't carry m2_per_unit).
-- On success: toast + `qc.invalidateQueries(["components"])` + close.
+**Header**: variant name, `width × height m`, "Edit details" Dialog (name, description, panel w/h, active Switch, notes) → updates `lining_variants` with `updated_by`.
 
-**Row expansion → Alternative supplier quotes**
-- A small inline `<Table>` rendered under the row when expanded.
-- Columns: Supplier, Cost/unit, Lead time (days), Preferred, Notes, Edit/✕.
-- Add/edit happens in an inline editable row (Select + Inputs + Switch + Save/Cancel) — no Dialog.
-- Mutations on `component_supplier_prices` (insert/update/delete) invalidate `["component_supplier_prices", componentId]`.
+**Bill of materials Card**:
+- Query `["lining_variant_components", variantId]`: `select('*, components(*)').eq('variant_id', variantId).order('sort_order')`.
+- Query `["components"]` for the picker.
+- Table columns: Component name, Kind Badge, Sections (chips per section label, or "All sections" chip if null/empty array), Qty/m², Unit (from component), Cost/unit, Cost/m² (`qty_per_m2 × cost_per_unit`), Stage (`manufacturing_stage`), Edit, Remove.
+- "+ Add component" button opens Dialog (also reused for Edit).
 
-**UI deps** (all already present): `tabs`, `table`, `dialog`, `select`, `switch`, `input`, `textarea`, `label`, `button`, `sonner`.
+**Add/Edit BOM Dialog**:
+- Component `Select` grouped by kind (`sleeve` / `material` / `labour`); each item shows `name — £cost/unit`.
+- Two linked numeric inputs: `qty_per_panel` and `qty_per_m2`, with editable `panel_m2` denominator (default `variant.default_panel_width * variant.default_panel_height`). Local state holds all three; editing `qty_per_panel` recomputes `qty_per_m2 = qty_per_panel / panel_m2`; editing `qty_per_m2` recomputes `qty_per_panel = qty_per_m2 * panel_m2`; editing `panel_m2` keeps `qty_per_m2` fixed and recomputes `qty_per_panel`. Persist `qty_per_m2` and `panel_m2` to row.
+- Sections multi-select: checkbox list of `SECTION_KEYS` plus "All sections" option (mutually exclusive — selecting "All sections" clears array; selecting any specific deselects "All"). Stores `null` (empty) when "All sections".
+- `sort_order` numeric input.
+- `notes` textarea.
+- Live preview: `qty_per_m2 × component.cost_per_unit` £/m².
+- Insert/update `lining_variant_components`; invalidate `["lining_variant_components", variantId]` and `["lining_variants"]`.
 
-### Edit `src/routes/__root.tsx`
+**Summary Card** (right):
+- Base cost/m² = Σ over BOM rows where `sections` is null/empty: `qty_per_m2 × component.cost_per_unit`.
+- Section breakdown: group section-specific rows by section key; render small table per section listing component name and £/m² of that section.
 
-Add a `<Link to="/components">Components</Link>` nav item in `Header`, placed after the Suppliers link, with the same className/activeProps styling.
+### 5. `__root.tsx`
+Change the `/pricing` nav link label from "Pricing" to "Products" and update `to="/products"`.
 
-### Types
+### 6. `src/integrations/supabase/types.ts`
+Auto-regenerated; no manual edits needed (tables already exist from prior migration).
 
-`src/integrations/supabase/types.ts` is auto-regenerated and already contains `components`, `component_supplier_prices`, and the `component_kind` enum from the previous migration — no extra migration needed. The route imports the generated `Database` type for `ComponentRow` / `Quote` / `Kind`.
-
-### Out of scope
-
-- Manufacturing stage grouping view.
-- Wiring components into the calculator / BOM.
-- Migrating sleeve data from `lining_pricing` into `components`.
+### Files
+- Edit: `src/lib/calculator.ts`, `src/routes/__root.tsx`, `src/routes/pricing.tsx` (becomes redirect).
+- Create: `src/routes/products.tsx`, `src/routes/products.$variantId.tsx`.
