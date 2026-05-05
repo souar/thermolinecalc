@@ -127,6 +127,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
   // Roof rows
   const roofRows: SectionRow[] = [
     mkRow(
+      "roof",
       "Roof panels",
       result.roofPanels,
       `${fmt(panelW)}×${fmt(result.roofPanelHeight)} m${result.roofPanelHeight < panelH - 1e-3 ? " (cut)" : ""}`,
@@ -137,6 +138,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
   if (result.apexPieces > 0) {
     roofRows.push(
       mkRow(
+        "apex",
         "Apex Infill",
         result.apexPieces,
         `${fmt(result.apexWidth)}×${fmt(value.baySize)} m`,
@@ -149,6 +151,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
   if (result.customRoofEave) {
     roofRows.push(
       mkRow(
+        "eave",
         "Eave Infill",
         result.customRoofEave.panelsCount,
         `${fmt(panelW)}×${fmt(result.customRoofEave.height)} m`,
@@ -162,6 +165,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
   // Wall rows
   const wallRows: SectionRow[] = [
     mkRow(
+      "walls",
       "Wall panels",
       result.wallsPanels,
       `${fmt(panelW)}×${fmt(result.wallPanelHeight)} m${result.wallPanelHeight < panelH - 1e-3 ? " (cut)" : ""}`,
@@ -172,6 +176,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
   if (result.customWallInfill) {
     wallRows.push(
       mkRow(
+        "wall_infill",
         "Wall infill",
         result.customWallInfill.panelsCount,
         `${fmt(panelW)}×${fmt(result.customWallInfill.height)} m`,
@@ -186,6 +191,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
   const gableTriOnlyM2 = result.gableTriM2 - result.gableInfillM2;
   const gableRows: SectionRow[] = [
     mkRow(
+      "gable_walls",
       "Rectangular fill",
       result.gableWallsPanels,
       `${fmt(panelW)}×${fmt(panelH)} m`,
@@ -197,6 +203,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
   if (result.gableTriCount > 0) {
     gableRows.push(
       mkRow(
+        "gable_triangles",
         "Triangles",
         result.gableTriCount,
         `≤ ${fmt(panelW)}×${fmt(panelH)} m`,
@@ -209,6 +216,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
   if (result.gableInfillCount > 0) {
     gableRows.push(
       mkRow(
+        "gable_triangles",
         "Triangle infills",
         result.gableInfillCount,
         `≤ ${fmt(panelW)}×${fmt(panelH)} m`,
@@ -225,6 +233,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
     if (rc.fullPanels > 0) {
       rafterRows.push(
         mkRow(
+          "roof_rafters",
           "Roof rafter covers (full)",
           rc.fullPanels,
           `${fmt(rc.flapLength)}×${fmt(value.rafterFlapWidth ?? 0.4)} m`,
@@ -236,6 +245,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
     if (rc.customLastFlap != null && rc.customPanels > 0) {
       rafterRows.push(
         mkRow(
+          "roof_rafters",
           "Roof rafter covers (custom length)",
           rc.customPanels,
           `${fmt(rc.customLastFlap)}×${fmt(value.rafterFlapWidth ?? 0.4)} m`,
@@ -250,6 +260,7 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
     const lc = result.legRafterCovers;
     rafterRows.push(
       mkRow(
+        "leg_rafters",
         "Leg rafter covers",
         lc.count,
         `${fmt(lc.legLength)}×${fmt(value.rafterFlapWidth ?? 0.4)} m`,
