@@ -97,8 +97,8 @@ function Header() {
           <Link to="/calculator" className="rounded px-3 py-1.5 text-muted-foreground hover:bg-muted [&.active]:bg-secondary [&.active]:text-foreground" activeProps={{ className: "active" }}>
             Quick calc
           </Link>
-          <Link to="/pricing" className="rounded px-3 py-1.5 text-muted-foreground hover:bg-muted [&.active]:bg-secondary [&.active]:text-foreground" activeProps={{ className: "active" }}>
-            Pricing
+          <Link to="/products" className="rounded px-3 py-1.5 text-muted-foreground hover:bg-muted [&.active]:bg-secondary [&.active]:text-foreground" activeProps={{ className: "active" }}>
+            Products
           </Link>
           <Link to="/suppliers" className="rounded px-3 py-1.5 text-muted-foreground hover:bg-muted [&.active]:bg-secondary [&.active]:text-foreground" activeProps={{ className: "active" }}>
             Suppliers
