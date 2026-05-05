@@ -2,14 +2,6 @@
 // All units in metres unless noted.
 // Billing model: m² = panel count × actual panel size (no trim discount).
 
-export const LINING_TYPES = [
-  { id: "MAL18 / Thermoline", panelW: 5, panelH: 5, weightPerM2: 0.18 },
-  { id: "MAL22", panelW: 5, panelH: 5, weightPerM2: 0.22 },
-  { id: "MAL30 / ThermoAcoustic", panelW: 3, panelH: 5, weightPerM2: 0.3 },
-] as const;
-
-export type LiningTypeId = (typeof LINING_TYPES)[number]["id"];
-
 export const SECTION_KEYS = [
   { key: 'roof', label: 'Roof' },
   { key: 'walls', label: 'Walls' },
