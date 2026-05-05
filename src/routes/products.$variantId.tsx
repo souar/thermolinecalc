@@ -232,6 +232,39 @@ function ProductDetail() {
     return Array.from(map.entries());
   }, [sectionRows]);
 
+  // Reference total cost from running calculate() against DEFAULT_INPUT
+  const reference = useMemo(() => {
+    const SECTION_KEY_SET = new Set<string>(SECTION_KEYS.map((s) => s.key));
+    const bom: BomLine[] = rows
+      .filter((r) => r.components)
+      .map((r) => {
+        const c = r.components!;
+        const sections = ((r.sections as string[] | null) ?? []).filter(
+          (s): s is SectionKey => SECTION_KEY_SET.has(s),
+        );
+        return {
+          componentId: c.id,
+          componentName: c.name,
+          componentKind: c.kind,
+          manufacturingStage: c.manufacturing_stage ?? null,
+          unit: c.unit,
+          costPerUnit: Number(c.cost_per_unit ?? 0),
+          qtyPerM2: Number(r.qty_per_m2 ?? 0),
+          sections: sections.length > 0 ? sections : null,
+          timeMinutesPerUnit: (c as any).time_minutes_per_unit != null ? Number((c as any).time_minutes_per_unit) : null,
+          m2PerUnit: (c as any).m2_per_unit != null ? Number((c as any).m2_per_unit) : null,
+          weightPerM2: (c as any).weight_per_m2 != null ? Number((c as any).weight_per_m2) : null,
+          primarySupplierId: null,
+          primarySupplierName: null,
+        };
+      });
+    const panelW = variantQ.data?.default_panel_width != null ? Number(variantQ.data.default_panel_width) : undefined;
+    const panelH = variantQ.data?.default_panel_height != null ? Number(variantQ.data.default_panel_height) : undefined;
+    const result = calculate({ ...DEFAULT_INPUT, panelW, panelH, liningType: variantId });
+    const jc = calculateJobCosts(result, bom);
+    return { result, jc };
+  }, [rows, variantQ.data, variantId]);
+
   if (variantQ.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!variant) return <p className="text-sm text-muted-foreground">Variant not found.</p>;
 
