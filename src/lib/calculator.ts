@@ -620,3 +620,98 @@ export function calculateInstall(result: CalcResult, input: InstallInput): Insta
     panelsPerDayPerTeam,
   };
 }
+
+// ============================================================================
+// BOM-driven job costing
+// ============================================================================
+
+export function m2BySections(result: CalcResult, sections: SectionKey[] | null | undefined): number {
+  if (!sections || sections.length === 0) return result.totalM2;
+  let m2 = 0;
+  for (const s of sections) {
+    switch (s) {
+      case 'roof': m2 += result.roofM2; break;
+      case 'walls': m2 += result.wallsM2; break;
+      case 'gable_walls': m2 += result.gableWallsM2; break;
+      case 'gable_triangles': m2 += result.gableTriM2; break;
+      case 'apex': m2 += result.apexM2; break;
+      case 'eave': m2 += result.customRoofEave?.m2 ?? 0; break;
+      case 'wall_infill': m2 += result.customWallInfill?.m2 ?? 0; break;
+      case 'roof_rafters': m2 += result.roofRafterCovers?.m2 ?? 0; break;
+      case 'leg_rafters': m2 += result.legRafterCovers?.m2 ?? 0; break;
+    }
+  }
+  return m2;
+}
+
+export interface BomLine {
+  componentId: string;
+  componentName: string;
+  componentKind: 'sleeve' | 'material' | 'labour';
+  manufacturingStage: string | null;
+  unit: string;
+  costPerUnit: number;
+  qtyPerM2: number;
+  sections: SectionKey[] | null;
+  timeMinutesPerUnit: number | null;
+  m2PerUnit: number | null;
+  weightPerM2: number | null;
+  primarySupplierId: string | null;
+  primarySupplierName: string | null;
+}
+
+export interface ResolvedBomLine extends BomLine {
+  m2: number;
+  qty: number;
+  cost: number;
+  minutes: number;
+}
+
+export interface JobCostsResult {
+  lines: ResolvedBomLine[];
+  materialsCost: number;
+  labourCost: number;
+  totalCost: number;
+  totalWeightKg: number;
+  totalLabourMinutes: number;
+}
+
+export function calculateJobCosts(result: CalcResult, bom: BomLine[]): JobCostsResult {
+  const lines: ResolvedBomLine[] = [];
+  let materialsCost = 0;
+  let labourCost = 0;
+  let totalWeightKg = 0;
+  let totalLabourMinutes = 0;
+
+  for (const line of bom) {
+    const m2 = m2BySections(result, line.sections);
+    const qty = m2 * line.qtyPerM2;
+    const cost = qty * line.costPerUnit;
+    const minutes =
+      line.componentKind === 'labour'
+        ? qty * (line.timeMinutesPerUnit ?? 0)
+        : 0;
+
+    if (line.componentKind === 'labour') {
+      labourCost += cost;
+      totalLabourMinutes += minutes;
+    } else {
+      materialsCost += cost;
+      if (line.weightPerM2 != null) {
+        totalWeightKg += m2 * line.qtyPerM2 * line.weightPerM2;
+      }
+    }
+
+    lines.push({ ...line, m2, qty, cost, minutes });
+  }
+
+  return {
+    lines,
+    materialsCost,
+    labourCost,
+    totalCost: materialsCost + labourCost,
+    totalWeightKg,
+    totalLabourMinutes,
+  };
+}
+
