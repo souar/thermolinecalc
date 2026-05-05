@@ -294,7 +294,7 @@ export function calculate(input: CalcInput): CalcResult {
   const halfW = width / 2;
   const slopePerM = halfW > 0 ? ridgeHeight / halfW : 0;
   const slicesPerHalf = Math.max(1, Math.ceil(halfW / baySize));
-  const wpm2 = weightPerM2 || liningDef.weightPerM2 || 0;
+  const wpm2 = weightPerM2 || 0;
   const maxPieceWeight = wpm2 > 0 ? panelW * panelH * wpm2 : Infinity;
 
   const gableTriSlices: Array<{ base: number; hInner: number; hOuter: number; pieces: GablePiece[] }> = [];
