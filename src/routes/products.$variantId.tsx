@@ -318,8 +318,29 @@ function ProductDetail() {
               <TableBody>
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground">
-                      No components yet.
+                    <TableCell colSpan={9}>
+                      <div className="flex flex-col items-center gap-3 py-8 text-center">
+                        <div className="text-base font-medium">No components attached yet</div>
+                        <p className="max-w-md text-xs text-muted-foreground">
+                          This variant won't appear with cost, weight or labour in the
+                          calculator until at least one component is added. Sleeves
+                          typically apply to specific sections (roof, walls, gables);
+                          materials and labour can apply to all sections.
+                        </p>
+                        {(componentsQ.data ?? []).length === 0 ? (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            You have no components defined.{" "}
+                            <Link to="/components" className="underline">
+                              Create sleeves, materials and labour
+                            </Link>{" "}
+                            first.
+                          </p>
+                        ) : (
+                          <Button onClick={() => setBomDialog({ mode: "new" })}>
+                            + Add your first component
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
