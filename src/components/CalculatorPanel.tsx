@@ -8,6 +8,10 @@ import {
   calculate,
   calculateJobCosts,
   fmt,
+  m2BySections,
+  SECTION_KEYS,
+  type ResolvedBomLine,
+  type SectionKey,
 } from "@/lib/calculator";
 import { fetchVariantsWithBom, VARIANTS_QUERY_KEY, type VariantWithBom } from "@/lib/variantsQuery";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -537,11 +541,11 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
         />
       </TabsContent>
 
-      <TabsContent value="manufacturing">
-        <ComingSoon
-          icon={<Factory className="h-8 w-8" />}
-          title="Manufacturing"
-          description="Scope material quantities, supplier costs, and production hours per piece. Will pull from a bill-of-materials database and generate a per-job manufacturing plan with lead times."
+      <TabsContent value="manufacturing" className="space-y-6">
+        <ManufacturingTab
+          variantName={selectedVariant?.name ?? null}
+          result={result}
+          jobCosts={jobCosts}
         />
       </TabsContent>
     </Tabs>
