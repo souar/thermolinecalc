@@ -103,6 +103,9 @@ function Header() {
           <Link to="/suppliers" className="rounded px-3 py-1.5 text-muted-foreground hover:bg-muted [&.active]:bg-secondary [&.active]:text-foreground" activeProps={{ className: "active" }}>
             Suppliers
           </Link>
+          <Link to="/components" className="rounded px-3 py-1.5 text-muted-foreground hover:bg-muted [&.active]:bg-secondary [&.active]:text-foreground" activeProps={{ className: "active" }}>
+            Components
+          </Link>
         </nav>
       </div>
     </header>

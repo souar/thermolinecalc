@@ -1,44 +1,48 @@
-## Catalogue schema migration + /suppliers admin route
+## /components admin route
 
-### 1. Database migration
+### New file: `src/routes/components.tsx`
 
-Single migration creating the catalogue schema. Existing `lining_pricing`, `marquee_specs`, `lining_results`, `install_time_defaults` tables are left untouched.
+Route at `/components` with three Tabs (Sleeves / Materials / Labour) over a shared component list filtered by `kind`.
 
-- Create enum `component_kind` ('sleeve','material','labour').
-- Create `suppliers` (id, name, contact_name, contact_email, contact_phone, address, notes, active default true, created_by, created_at, updated_at). RLS enabled, permissive `public_all_suppliers` policy. BEFORE UPDATE trigger using existing `public.touch_updated_at()`.
-- Create `components` (id, kind, name, sku, unit, cost_per_unit default 0, m2_per_unit, weight_per_m2, primary_supplier_id → suppliers(id) ON DELETE SET NULL, panel_width, panel_height, manufacturing_stage, time_minutes_per_unit, active default true, notes, created_by, updated_by, timestamps). Indexes on `kind` and `primary_supplier_id`. RLS permissive. Update trigger.
-- Create `component_supplier_prices` (component_id → components ON DELETE CASCADE, supplier_id → suppliers ON DELETE CASCADE, cost_per_unit, is_preferred default false, lead_time_days, notes, timestamps; UNIQUE(component_id, supplier_id)). RLS permissive. Update trigger.
-- Create `lining_variants` (name unique, description, default_panel_width, default_panel_height, active default true, notes, created_by, updated_by, timestamps). RLS permissive. Update trigger.
-- Create `lining_variant_components` BOM (variant_id → lining_variants ON DELETE CASCADE, component_id → components ON DELETE RESTRICT, qty_per_m2 default 0, panel_m2, sections text[] (no CHECK), notes, sort_order default 0, timestamps). Index on `variant_id`. RLS permissive. Update trigger.
-- Seed `lining_variants` from existing `lining_pricing` rows (name = lining_type, default_panel_width/height) ON CONFLICT DO NOTHING.
+**Queries**
+- `useQuery(["components"])` → all rows from `components` ordered by name; filtered client-side by active tab.
+- `useQuery(["suppliers", { active: true }])` → id+name list for joining and Select dropdowns.
+- `useQuery(["component_supplier_prices", componentId])` → loaded only when a row is expanded.
 
-After the migration is applied, `src/integrations/supabase/types.ts` is regenerated automatically.
+**Per-tab table columns**
+- Common: expand toggle, Name, SKU, Unit, Cost/unit (£), Cost/m² (cost_per_unit / m2_per_unit, "—" if no m2_per_unit), Supplier (looked up from suppliers query), Active (Switch toggles via mutation), Edit.
+- Sleeves: + Panel W, Panel H, Weight kg/m².
+- Materials: + m²/unit, Weight kg/m².
+- Labour: + Manufacturing stage, Minutes/unit.
 
-### 2. /suppliers route
+**New / Edit Dialog**
+- Fields rendered conditionally by kind:
+  - All: Name, SKU, Unit (Input with `<datalist>` of piece/m2/m/roll/hour/panel), Cost/unit, Notes, Active Switch.
+  - Sleeves & Materials: m²/unit, Weight per m², Primary supplier (Select sourced from suppliers query, with "—" option), Manufacturing stage (Select with the 6 conventional stage values plus "—").
+  - Sleeves only: Panel width, Panel height.
+  - Labour: Minutes/unit, Manufacturing stage (Select; required at submit time).
+- Below the Cost/unit input, a live helper line: "Cost per m²: £X.XX" computed from form values (or "—" when m2_per_unit is empty/zero).
+- Submit upserts via `supabase.from("components").insert/update`, sets `created_by`/`updated_by` to `getUsername()`, kind-irrelevant fields are nulled out (e.g. labour rows don't carry m2_per_unit).
+- On success: toast + `qc.invalidateQueries(["components"])` + close.
 
-New file `src/routes/suppliers.tsx` modelled on `/pricing`:
+**Row expansion → Alternative supplier quotes**
+- A small inline `<Table>` rendered under the row when expanded.
+- Columns: Supplier, Cost/unit, Lead time (days), Preferred, Notes, Edit/✕.
+- Add/edit happens in an inline editable row (Select + Inputs + Switch + Save/Cancel) — no Dialog.
+- Mutations on `component_supplier_prices` (insert/update/delete) invalidate `["component_supplier_prices", componentId]`.
 
-- `createFileRoute("/suppliers")` exporting `Route` with `component: SuppliersPage`.
-- Page header: title "Suppliers", an "Archived" toggle (Switch or Button) that flips between active=true / active=false views, and a "+ New supplier" Button opening a create Dialog.
-- TanStack Query `useQuery({ queryKey: ["suppliers", { active }] })` selecting from `suppliers` filtered by `active`, ordered by `name`.
-- shadcn `Table` with columns: Name, Contact (contact_name), Email, Phone, Notes, Actions (Edit button per row).
-- Create Dialog: form fields for name (required), contact_name, contact_email, contact_phone, address, notes. On submit insert with `created_by: getUsername()`. Invalidate `["suppliers"]`. Toast on success/error.
-- Edit Dialog: pre-filled fields for all editable columns. Footer has Save plus an Archive (when active) or Restore (when archived) button that toggles `active` and saves. Invalidate `["suppliers"]`.
-- Components used: `Dialog`, `Input`, `Textarea`, `Label`, `Button`, `Table`, `Switch` (or toggle Button) — all already in `src/components/ui`.
+**UI deps** (all already present): `tabs`, `table`, `dialog`, `select`, `switch`, `input`, `textarea`, `label`, `button`, `sonner`.
 
-### 3. Header nav
+### Edit `src/routes/__root.tsx`
 
-Add a "Suppliers" `<Link to="/suppliers">` entry in `__root.tsx`'s `Header`, styled identically to existing nav links, placed after "Pricing".
+Add a `<Link to="/components">Components</Link>` nav item in `Header`, placed after the Suppliers link, with the same className/activeProps styling.
 
-### Files
+### Types
 
-- New migration (catalogue schema + seed).
-- New `src/routes/suppliers.tsx`.
-- Edit `src/routes/__root.tsx` (one nav link).
-- Auto-regenerated `src/integrations/supabase/types.ts`.
+`src/integrations/supabase/types.ts` is auto-regenerated and already contains `components`, `component_supplier_prices`, and the `component_kind` enum from the previous migration — no extra migration needed. The route imports the generated `Database` type for `ComponentRow` / `Quote` / `Kind`.
 
 ### Out of scope
 
-- Components / variants / BOM admin UIs (separate future routes).
-- Wiring catalogue into the calculator.
-- Migrating existing `lining_pricing` data into `components` / BOM rows.
+- Manufacturing stage grouping view.
+- Wiring components into the calculator / BOM.
+- Migrating sleeve data from `lining_pricing` into `components`.
