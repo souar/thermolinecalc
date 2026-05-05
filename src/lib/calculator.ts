@@ -10,6 +10,19 @@ export const LINING_TYPES = [
 
 export type LiningTypeId = (typeof LINING_TYPES)[number]["id"];
 
+export const SECTION_KEYS = [
+  { key: 'roof', label: 'Roof' },
+  { key: 'walls', label: 'Walls' },
+  { key: 'gable_walls', label: 'Gable walls' },
+  { key: 'gable_triangles', label: 'Gable triangles' },
+  { key: 'apex', label: 'Apex' },
+  { key: 'eave', label: 'Eave' },
+  { key: 'wall_infill', label: 'Wall infill' },
+  { key: 'roof_rafters', label: 'Roof rafters' },
+  { key: 'leg_rafters', label: 'Leg rafters' },
+] as const;
+export type SectionKey = (typeof SECTION_KEYS)[number]['key'];
+
 export interface CalcInput {
   length: number;
   width: number;
