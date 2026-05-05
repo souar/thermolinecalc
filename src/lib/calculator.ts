@@ -441,8 +441,9 @@ export function calculate(input: CalcInput): CalcResult {
     gableInfillCount +
     rafterPanels;
 
-  const totalWeightKg = totalM2 * (weightPerM2 || liningDef.weightPerM2);
-  const totalCost = totalM2 * costPerM2;
+  // totalWeightKg & totalCost no longer computed here — caller composes via calculateJobCosts.
+  const totalWeightKg = 0;
+  const totalCost = 0;
 
   return {
     slopeLength,
