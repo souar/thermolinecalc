@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CalculatorPanel } from "@/components/CalculatorPanel";
-import { CalcInput, DEFAULT_INPUT, DEFAULT_INSTALL_INPUT, InstallInput, calculate } from "@/lib/calculator";
+import { CalcInput, DEFAULT_INPUT, DEFAULT_INSTALL_INPUT, InstallInput, calculate, calculateJobCosts } from "@/lib/calculator";
+import { fetchVariantsWithBom, VARIANTS_QUERY_KEY, type VariantWithBom } from "@/lib/variantsQuery";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, Save } from "lucide-react";
 import { getUsername } from "@/lib/username";
@@ -30,13 +31,9 @@ function JobPage() {
     },
   });
 
-  const pricingQ = useQuery({
-    queryKey: ["pricing"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("lining_pricing").select("*");
-      if (error) throw error;
-      return data ?? [];
-    },
+  const variantsQ = useQuery({
+    queryKey: VARIANTS_QUERY_KEY,
+    queryFn: fetchVariantsWithBom,
   });
 
   const [input, setInput] = useState<CalcInput>(DEFAULT_INPUT);
@@ -54,19 +51,22 @@ function JobPage() {
     if (typeof window !== "undefined") localStorage.setItem(installKey, JSON.stringify(install));
   }, [install, installKey]);
 
-  // Hydrate from latest spec on load
+  // Hydrate from latest spec on load — look up variant by name
   useEffect(() => {
-    if (!jobQ.data) return;
+    if (!jobQ.data || !variantsQ.data) return;
     const specs = (jobQ.data.marquee_specs ?? []) as any[];
     if (specs.length === 0) return;
     const latest = specs.sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
+    const matchedVariant: VariantWithBom | undefined = variantsQ.data.find(
+      (v) => v.name === latest.lining_type,
+    );
     setInput({
       length: Number(latest.length),
       width: Number(latest.width),
       eaveHeight: Number(latest.eave_height),
       pitchDeg: Number(latest.pitch_deg),
       baySize: Number(latest.bay_size),
-      liningType: latest.lining_type,
+      liningType: matchedVariant?.id ?? "",
       roofOverhangEnabled: latest.roof_overhang_enabled,
       wallFloorSealEnabled: latest.wall_floor_seal_enabled,
       apexOverride: latest.apex_override,
@@ -76,19 +76,19 @@ function JobPage() {
       lineGableTriangles: latest.line_gable_triangles ?? true,
       lineApex: latest.line_apex ?? true,
     });
-  }, [jobQ.data]);
-
-  const linePrice = pricingQ.data?.find((p) => p.lining_type === input.liningType);
+  }, [jobQ.data, variantsQ.data]);
 
   const saveSpec = useMutation({
     mutationFn: async () => {
-      const result = calculate({
-        ...input,
-        costPerM2: linePrice?.cost_per_m2 ?? 0,
-        weightPerM2: linePrice?.weight_per_m2 ?? 0,
-        panelW: linePrice?.panel_width != null ? Number(linePrice.panel_width) : undefined,
-        panelH: linePrice?.panel_height != null ? Number(linePrice.panel_height) : undefined,
-      });
+      const variants = variantsQ.data ?? (await fetchVariantsWithBom());
+      const variant = variants.find((v) => v.id === input.liningType);
+      if (!variant) throw new Error("Select a lining variant first.");
+
+      const panelW = variant.default_panel_width != null ? Number(variant.default_panel_width) : undefined;
+      const panelH = variant.default_panel_height != null ? Number(variant.default_panel_height) : undefined;
+      const result = calculate({ ...input, panelW, panelH });
+      const jobCosts = calculateJobCosts(result, variant.bom);
+
       const { data: spec, error } = await supabase
         .from("marquee_specs")
         .insert({
@@ -98,7 +98,8 @@ function JobPage() {
           eave_height: input.eaveHeight,
           pitch_deg: input.pitchDeg,
           bay_size: input.baySize,
-          lining_type: input.liningType,
+          // Store variant NAME (string) for compatibility with old rows
+          lining_type: variant.name,
           roof_overhang_enabled: input.roofOverhangEnabled,
           wall_floor_seal_enabled: input.wallFloorSealEnabled,
           apex_override: input.apexOverride,
@@ -122,12 +123,11 @@ function JobPage() {
         roof_panels: result.roofPanels + result.apexPieces,
         gable_panels: result.gableWallsPanels + result.gableTriCount,
         apex_width: result.apexWidth,
-        total_weight_kg: result.totalWeightKg,
-        total_cost: result.totalCost,
-        breakdown_json: result as any,
+        total_weight_kg: jobCosts.totalWeightKg,
+        total_cost: jobCosts.totalCost,
+        breakdown_json: { ...result, jobCosts } as any,
       });
       if (rErr) throw rErr;
-      // bump job updated_at
       await supabase.from("jobs").update({ updated_at: new Date().toISOString() }).eq("id", jobId);
     },
     onSuccess: () => {
@@ -139,6 +139,8 @@ function JobPage() {
 
   const job = jobQ.data;
   const revisions = (job?.marquee_specs ?? []) as any[];
+
+  const canSave = !!input.liningType && !variantsQ.isLoading && !saveSpec.isPending;
 
   return (
     <div className="space-y-6">
@@ -162,7 +164,7 @@ function JobPage() {
             </div>
           )}
         </div>
-        <Button onClick={() => saveSpec.mutate()} disabled={saveSpec.isPending}>
+        <Button onClick={() => saveSpec.mutate()} disabled={!canSave}>
           <Save className="mr-1 h-4 w-4" /> {saveSpec.isPending ? "Saving…" : "Save revision"}
         </Button>
       </div>
@@ -172,17 +174,6 @@ function JobPage() {
         onChange={setInput}
         install={install}
         onInstallChange={setInstall}
-        pricing={
-          linePrice
-            ? {
-                cost_per_m2: Number(linePrice.cost_per_m2),
-                weight_per_m2: linePrice.weight_per_m2 != null ? Number(linePrice.weight_per_m2) : null,
-                panel_width: Number(linePrice.panel_width),
-                panel_height: Number(linePrice.panel_height),
-              }
-            : null
-        }
-        pricingAll={pricingQ.data ?? []}
       />
 
       {revisions.length > 0 && (
