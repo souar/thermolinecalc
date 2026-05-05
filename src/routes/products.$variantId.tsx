@@ -436,6 +436,71 @@ function ProductDetail() {
               )}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
+                Reference total cost
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Reference: 50×30m at 18° pitch with all sections lined
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">Total cost</div>
+                  <div className="tabular text-lg font-semibold">£{reference.jc.totalCost.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">Total m²</div>
+                  <div className="tabular text-lg font-semibold">{reference.result.totalM2.toFixed(1)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">£/m²</div>
+                  <div className="tabular text-lg font-semibold">
+                    £{reference.result.totalM2 > 0 ? (reference.jc.totalCost / reference.result.totalM2).toFixed(2) : "—"}
+                  </div>
+                </div>
+              </div>
+
+              {reference.jc.lines.filter((l) => l.componentKind !== "labour").length > 0 && (
+                <div>
+                  <div className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">Materials</div>
+                  <ul className="space-y-0.5 text-xs">
+                    {reference.jc.lines
+                      .filter((l) => l.componentKind !== "labour")
+                      .map((l) => (
+                        <li key={l.componentId + (l.sections?.join(",") ?? "")} className="flex justify-between gap-2">
+                          <span className="truncate">{l.componentName}</span>
+                          <span className="tabular text-muted-foreground whitespace-nowrap">
+                            {l.m2.toFixed(1)}m² · {l.qty.toFixed(2)} {l.unit} · £{l.cost.toFixed(2)}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+
+              {reference.jc.lines.filter((l) => l.componentKind === "labour").length > 0 && (
+                <div>
+                  <div className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">Labour</div>
+                  <ul className="space-y-0.5 text-xs">
+                    {reference.jc.lines
+                      .filter((l) => l.componentKind === "labour")
+                      .map((l) => (
+                        <li key={l.componentId + (l.sections?.join(",") ?? "")} className="flex justify-between gap-2">
+                          <span className="truncate">{l.componentName}</span>
+                          <span className="tabular text-muted-foreground whitespace-nowrap">
+                            {l.m2.toFixed(1)}m² · {l.qty.toFixed(2)} {l.unit} · {l.minutes.toFixed(0)}min · £{l.cost.toFixed(2)}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
