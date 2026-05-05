@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SuppliersRouteImport } from './routes/suppliers'
+import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ComponentsRouteImport } from './routes/components'
 import { Route as CalculatorRouteImport } from './routes/calculator'
@@ -20,6 +21,11 @@ import { Route as CustomersCustomerIdRouteImport } from './routes/customers.$cus
 const SuppliersRoute = SuppliersRouteImport.update({
   id: '/suppliers',
   path: '/suppliers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingRoute = PricingRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/calculator': typeof CalculatorRoute
   '/components': typeof ComponentsRoute
   '/pricing': typeof PricingRoute
+  '/products': typeof ProductsRoute
   '/suppliers': typeof SuppliersRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/calculator': typeof CalculatorRoute
   '/components': typeof ComponentsRoute
   '/pricing': typeof PricingRoute
+  '/products': typeof ProductsRoute
   '/suppliers': typeof SuppliersRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/calculator': typeof CalculatorRoute
   '/components': typeof ComponentsRoute
   '/pricing': typeof PricingRoute
+  '/products': typeof ProductsRoute
   '/suppliers': typeof SuppliersRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/calculator'
     | '/components'
     | '/pricing'
+    | '/products'
     | '/suppliers'
     | '/customers/$customerId'
     | '/jobs/$jobId'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/calculator'
     | '/components'
     | '/pricing'
+    | '/products'
     | '/suppliers'
     | '/customers/$customerId'
     | '/jobs/$jobId'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/calculator'
     | '/components'
     | '/pricing'
+    | '/products'
     | '/suppliers'
     | '/customers/$customerId'
     | '/jobs/$jobId'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   CalculatorRoute: typeof CalculatorRoute
   ComponentsRoute: typeof ComponentsRoute
   PricingRoute: typeof PricingRoute
+  ProductsRoute: typeof ProductsRoute
   SuppliersRoute: typeof SuppliersRoute
   CustomersCustomerIdRoute: typeof CustomersCustomerIdRoute
   JobsJobIdRoute: typeof JobsJobIdRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/suppliers'
       fullPath: '/suppliers'
       preLoaderRoute: typeof SuppliersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing': {
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalculatorRoute: CalculatorRoute,
   ComponentsRoute: ComponentsRoute,
   PricingRoute: PricingRoute,
+  ProductsRoute: ProductsRoute,
   SuppliersRoute: SuppliersRoute,
   CustomersCustomerIdRoute: CustomersCustomerIdRoute,
   JobsJobIdRoute: JobsJobIdRoute,
@@ -187,3 +208,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
