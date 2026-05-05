@@ -150,9 +150,8 @@ export function calculate(input: CalcInput): CalcResult {
   const lineGableTriangles = input.lineGableTriangles !== false;
   const lineApex = input.lineApex !== false;
 
-  const liningDef = LINING_TYPES.find((l) => l.id === input.liningType) ?? LINING_TYPES[0];
-  const panelW = input.panelW && input.panelW > 0 ? input.panelW : liningDef.panelW;
-  const panelH = input.panelH && input.panelH > 0 ? input.panelH : liningDef.panelH;
+  const panelW = input.panelW && input.panelW > 0 ? input.panelW : 5;
+  const panelH = input.panelH && input.panelH > 0 ? input.panelH : 5;
   const panelArea = panelW * panelH;
 
   const warnings: string[] = [];
