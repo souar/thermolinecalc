@@ -27,7 +27,7 @@ import { useState } from "react";
 import { getUsername } from "@/lib/username";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/products")({
+export const Route = createFileRoute("/products/")({
   component: ProductsPage,
 });
 
