@@ -487,7 +487,7 @@ export const DEFAULT_INPUT: CalcInput = {
   eaveHeight: 3,
   pitchDeg: 18,
   baySize: 5,
-  liningType: "MAL18 / Thermoline",
+  liningType: "",
   roofOverhangEnabled: true,
   wallFloorSealEnabled: true,
   apexOverride: null,
