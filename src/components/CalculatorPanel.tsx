@@ -1,13 +1,15 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   CalcInput,
   CalcResult,
   DEFAULT_INSTALL_INPUT,
   InstallInput,
-  LINING_TYPES,
   calculate,
+  calculateJobCosts,
   fmt,
 } from "@/lib/calculator";
+import { fetchVariantsWithBom, VARIANTS_QUERY_KEY, type VariantWithBom } from "@/lib/variantsQuery";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,53 +22,89 @@ import { BayDiagram } from "./BayDiagram";
 import { GableDiagram } from "./GableDiagram";
 import { RoofPlanDiagram } from "./RoofPlanDiagram";
 import { InstallPanel } from "./InstallPanel";
-import { LINING_TYPES as LT } from "@/lib/calculator";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-export interface PricingRow {
-  lining_type: string;
-  cost_per_m2: number;
-  weight_per_m2: number | null;
-  panel_width?: number | null;
-  panel_height?: number | null;
-}
 
 interface Props {
   value: CalcInput;
   onChange: (v: CalcInput) => void;
-  pricing?: {
-    cost_per_m2: number;
-    weight_per_m2: number | null;
-    panel_width?: number | null;
-    panel_height?: number | null;
-  } | null;
-  pricingAll?: PricingRow[];
   rightExtra?: React.ReactNode;
   install?: InstallInput;
   onInstallChange?: (v: InstallInput) => void;
 }
 
-export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExtra, install, onInstallChange }: Props) {
+export function CalculatorPanel({ value, onChange, rightExtra, install, onInstallChange }: Props) {
   const set = <K extends keyof CalcInput>(k: K, v: CalcInput[K]) => onChange({ ...value, [k]: v });
   const num = (s: string) => (s === "" ? 0 : Number(s));
 
-  const liningDef = LT.find((l) => l.id === value.liningType) ?? LT[0];
-  const panelW = pricing?.panel_width ?? liningDef.panelW;
-  const panelH = pricing?.panel_height ?? liningDef.panelH;
+  const variantsQ = useQuery({
+    queryKey: VARIANTS_QUERY_KEY,
+    queryFn: fetchVariantsWithBom,
+  });
+
+  const variants = variantsQ.data ?? [];
+  const selectedVariant: VariantWithBom | undefined = useMemo(
+    () => variants.find((v) => v.id === value.liningType),
+    [variants, value.liningType],
+  );
+
+  const panelW =
+    selectedVariant?.default_panel_width != null
+      ? Number(selectedVariant.default_panel_width)
+      : 5;
+  const panelH =
+    selectedVariant?.default_panel_height != null
+      ? Number(selectedVariant.default_panel_height)
+      : 5;
+
+  // Approx blended weight/m² for gable splitting purposes only
+  const blendedWeightPerM2 = useMemo(() => {
+    if (!selectedVariant) return 0;
+    return selectedVariant.bom.reduce((s, l) => {
+      if (l.componentKind === "labour" || l.weightPerM2 == null) return s;
+      // Only count "all sections" lines for the blended estimate
+      if (l.sections && l.sections.length > 0) return s;
+      return s + l.qtyPerM2 * l.weightPerM2;
+    }, 0);
+  }, [selectedVariant]);
+
   const calcInput: CalcInput = {
     ...value,
-    costPerM2: pricing?.cost_per_m2 ?? value.costPerM2 ?? 0,
-    weightPerM2: pricing?.weight_per_m2 ?? value.weightPerM2 ?? 0,
     panelW,
     panelH,
+    weightPerM2: blendedWeightPerM2,
   };
-  const result = useMemo<CalcResult>(() => calculate(calcInput), [value, pricing]);
+  const result = useMemo<CalcResult>(() => calculate(calcInput), [value, panelW, panelH, blendedWeightPerM2]);
 
-  const costPerM2 = pricing?.cost_per_m2 ?? 0;
-  const weightPerM2 = pricing?.weight_per_m2 ?? liningDef.weightPerM2 ?? 0;
+  const jobCosts = useMemo(
+    () => calculateJobCosts(result, selectedVariant?.bom ?? []),
+    [result, selectedVariant],
+  );
+
+  // Per-section cost: sum of resolved BOM lines whose sections include this key,
+  // plus the section's share of "all sections" lines (scaled by sectionM2 / totalM2).
+  const sectionCost = (sectionKey: string, sectionM2: number): number => {
+    if (sectionM2 <= 0 || result.totalM2 <= 0) return 0;
+    let cost = 0;
+    for (const l of jobCosts.lines) {
+      if (!l.sections || l.sections.length === 0) {
+        cost += l.cost * (sectionM2 / result.totalM2);
+      } else if (l.sections.includes(sectionKey as never)) {
+        // Allocate this line's cost across its sections proportional to section m²
+        const totalLineM2 = l.m2 || 1;
+        cost += l.cost * (sectionM2 / totalLineM2);
+      }
+    }
+    return cost;
+  };
+
+  const sectionWeight = (sectionM2: number): number => {
+    if (sectionM2 <= 0 || result.totalM2 <= 0) return 0;
+    return jobCosts.totalWeightKg * (sectionM2 / result.totalM2);
+  };
 
   const mkRow = (
+    sectionKey: string,
     component: string,
     panels: number,
     panelSize: string,
@@ -80,8 +118,8 @@ export function CalculatorPanel({ value, onChange, pricing, pricingAll, rightExt
     perBay: result.bays > 0 ? panels / result.bays : 0,
     perBayLabel: opts.perBayLabel,
     m2,
-    weight: m2 * weightPerM2,
-    cost: m2 * costPerM2,
+    weight: sectionWeight(m2),
+    cost: sectionCost(sectionKey, m2),
     notes,
     custom: opts.custom,
   });
