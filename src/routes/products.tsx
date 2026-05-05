@@ -133,7 +133,9 @@ function ProductsPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Products</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Lining variants and their bills of materials.
+            Lining variants and their bills of materials. Each variant needs components
+            assigned before it can be used in the calculator — click a variant to edit
+            its bill of materials.
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -170,10 +172,20 @@ function ProductsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              (variantsQ.data ?? []).map((v) => (
+              (variantsQ.data ?? []).map((v) => {
+                const bomCount = v.lining_variant_components.length;
+                const empty = bomCount === 0;
+                return (
                 <TableRow key={v.id}>
                   <TableCell className="font-medium">
-                    <div>{v.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span>{v.name}</span>
+                      {empty && (
+                        <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100 dark:bg-amber-900/40 dark:text-amber-200">
+                          No components
+                        </Badge>
+                      )}
+                    </div>
                     {v.description && (
                       <div className="text-xs text-muted-foreground">{v.description}</div>
                     )}
@@ -192,14 +204,15 @@ function ProductsPage() {
                     />
                   </TableCell>
                   <TableCell>
-                    <Button asChild size="sm" variant="outline">
+                    <Button asChild size="sm" variant={empty ? "default" : "outline"}>
                       <Link to="/products/$variantId" params={{ variantId: v.id }}>
-                        View / Edit
+                        {empty ? "Edit BOM" : "View / Edit"}
                       </Link>
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

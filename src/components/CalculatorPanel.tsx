@@ -28,6 +28,7 @@ import { RoofPlanDiagram } from "./RoofPlanDiagram";
 import { InstallPanel } from "./InstallPanel";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Link } from "@tanstack/react-router";
 
 interface Props {
   value: CalcInput;
@@ -341,6 +342,19 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedVariant && selectedVariant.bom.length === 0 && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      This variant has no bill of materials yet.{" "}
+                      <Link
+                        to="/products/$variantId"
+                        params={{ variantId: selectedVariant.id }}
+                        className="underline"
+                      >
+                        Open it in Products
+                      </Link>{" "}
+                      to add components.
+                    </p>
+                  )}
                 </Field>
               </div>
 
