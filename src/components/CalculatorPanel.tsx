@@ -472,11 +472,12 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
               </Alert>
             )}
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <Stat label="Total panels" value={String(result.totalPanels)} unit="pcs" highlight />
               <Stat label="Total area" value={fmt(result.totalM2)} unit="m²" />
-              <Stat label="Weight" value={fmt(result.totalWeightKg, 1)} unit="kg" />
-              <Stat label="Cost" value={fmt(result.totalCost)} unit={pricing ? "" : "(set price)"} />
+              <Stat label="Weight" value={fmt(jobCosts.totalWeightKg, 1)} unit="kg" />
+              <Stat label="Labour" value={fmt(jobCosts.totalLabourMinutes / 60, 1)} unit="hr" />
+              <Stat label="Cost" value={fmt(jobCosts.totalCost)} unit={selectedVariant ? "" : "(no variant)"} />
             </div>
 
             <SectionTable
