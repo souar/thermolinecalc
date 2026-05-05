@@ -1,31 +1,44 @@
+## Catalogue schema migration + /suppliers admin route
 
+### 1. Database migration
 
-## Scale install time by team size
+Single migration creating the catalogue schema. Existing `lining_pricing`, `marquee_specs`, `lining_results`, `install_time_defaults` tables are left untouched.
 
-### Problem
-The "minutes per panel" defaults (roof 60min, walls 45min, etc.) describe a baseline 6-person team. Right now, changing **People / team** has no effect on install hours/days — it only changes the `personHours` total. The user expects more people on a team to finish faster.
+- Create enum `component_kind` ('sleeve','material','labour').
+- Create `suppliers` (id, name, contact_name, contact_email, contact_phone, address, notes, active default true, created_by, created_at, updated_at). RLS enabled, permissive `public_all_suppliers` policy. BEFORE UPDATE trigger using existing `public.touch_updated_at()`.
+- Create `components` (id, kind, name, sku, unit, cost_per_unit default 0, m2_per_unit, weight_per_m2, primary_supplier_id → suppliers(id) ON DELETE SET NULL, panel_width, panel_height, manufacturing_stage, time_minutes_per_unit, active default true, notes, created_by, updated_by, timestamps). Indexes on `kind` and `primary_supplier_id`. RLS permissive. Update trigger.
+- Create `component_supplier_prices` (component_id → components ON DELETE CASCADE, supplier_id → suppliers ON DELETE CASCADE, cost_per_unit, is_preferred default false, lead_time_days, notes, timestamps; UNIQUE(component_id, supplier_id)). RLS permissive. Update trigger.
+- Create `lining_variants` (name unique, description, default_panel_width, default_panel_height, active default true, notes, created_by, updated_by, timestamps). RLS permissive. Update trigger.
+- Create `lining_variant_components` BOM (variant_id → lining_variants ON DELETE CASCADE, component_id → components ON DELETE RESTRICT, qty_per_m2 default 0, panel_m2, sections text[] (no CHECK), notes, sort_order default 0, timestamps). Index on `variant_id`. RLS permissive. Update trigger.
+- Seed `lining_variants` from existing `lining_pricing` rows (name = lining_type, default_panel_width/height) ON CONFLICT DO NOTHING.
 
-### Fix
-In `src/lib/calculator.ts` → `calculateInstall`:
+After the migration is applied, `src/integrations/supabase/types.ts` is regenerated automatically.
 
-- Treat `MIN_PEOPLE_PER_TEAM` (6) as the calibration baseline for the per-panel times.
-- Apply a team-size scale factor `teamScale = MIN_PEOPLE_PER_TEAM / people` to each section's hours.
-  - 6 people → ×1.0 (unchanged)
-  - 12 people → ×0.5 (half the time)
-  - 9 people → ×0.667
-- Section `hours` and `days` are derived from the scaled hours; `totalDays` follows automatically.
-- `personHours` keeps multiplying by actual `people * teams`, so the labour-cost figure stays accurate (bigger team = same person-hours, less calendar time — ideal linear scaling).
-- `panelsPerDayPerTeam` rises naturally because days shrink.
+### 2. /suppliers route
 
-### UI hint (optional, same edit)
-Add a small helper line under the **People / team** input: "Baseline 6 — extra people scale install time down proportionally." So the relationship is discoverable.
+New file `src/routes/suppliers.tsx` modelled on `/pricing`:
 
-### Files to change
-- `src/lib/calculator.ts` — apply `teamScale` in `calculateInstall` (one block, lines ~589–607).
-- `src/components/InstallPanel.tsx` — add the helper caption under the People / team field.
+- `createFileRoute("/suppliers")` exporting `Route` with `component: SuppliersPage`.
+- Page header: title "Suppliers", an "Archived" toggle (Switch or Button) that flips between active=true / active=false views, and a "+ New supplier" Button opening a create Dialog.
+- TanStack Query `useQuery({ queryKey: ["suppliers", { active }] })` selecting from `suppliers` filtered by `active`, ordered by `name`.
+- shadcn `Table` with columns: Name, Contact (contact_name), Email, Phone, Notes, Actions (Edit button per row).
+- Create Dialog: form fields for name (required), contact_name, contact_email, contact_phone, address, notes. On submit insert with `created_by: getUsername()`. Invalidate `["suppliers"]`. Toast on success/error.
+- Edit Dialog: pre-filled fields for all editable columns. Footer has Save plus an Archive (when active) or Restore (when archived) button that toggles `active` and saves. Invalidate `["suppliers"]`.
+- Components used: `Dialog`, `Input`, `Textarea`, `Label`, `Button`, `Table`, `Switch` (or toggle Button) — all already in `src/components/ui`.
+
+### 3. Header nav
+
+Add a "Suppliers" `<Link to="/suppliers">` entry in `__root.tsx`'s `Header`, styled identically to existing nav links, placed after "Pricing".
+
+### Files
+
+- New migration (catalogue schema + seed).
+- New `src/routes/suppliers.tsx`.
+- Edit `src/routes/__root.tsx` (one nav link).
+- Auto-regenerated `src/integrations/supabase/types.ts`.
 
 ### Out of scope
-- Diminishing-returns curves (e.g. 12 people ≠ exactly 2× faster in reality). Linear scaling matches the user's stated rule ("equally distribute the time").
-- Per-section different team sizes.
-- Wiring the existing `parallelSections` toggle into the maths (still informational).
 
+- Components / variants / BOM admin UIs (separate future routes).
+- Wiring catalogue into the calculator.
+- Migrating existing `lining_pricing` data into `components` / BOM rows.
