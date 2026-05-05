@@ -8,6 +8,10 @@ import {
   calculate,
   calculateJobCosts,
   fmt,
+  m2BySections,
+  SECTION_KEYS,
+  type ResolvedBomLine,
+  type SectionKey,
 } from "@/lib/calculator";
 import { fetchVariantsWithBom, VARIANTS_QUERY_KEY, type VariantWithBom } from "@/lib/variantsQuery";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -537,11 +541,11 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
         />
       </TabsContent>
 
-      <TabsContent value="manufacturing">
-        <ComingSoon
-          icon={<Factory className="h-8 w-8" />}
-          title="Manufacturing"
-          description="Scope material quantities, supplier costs, and production hours per piece. Will pull from a bill-of-materials database and generate a per-job manufacturing plan with lead times."
+      <TabsContent value="manufacturing" className="space-y-6">
+        <ManufacturingTab
+          variantName={selectedVariant?.name ?? null}
+          result={result}
+          jobCosts={jobCosts}
         />
       </TabsContent>
     </Tabs>
@@ -709,6 +713,386 @@ function KV({ k, v }: { k: string; v: string }) {
     <div>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</div>
       <div className="tabular text-sm">{v}</div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Manufacturing tab
+// ============================================================================
+
+const MFG_SECTION_ORDER: SectionKey[] = [
+  "roof",
+  "walls",
+  "gable_walls",
+  "gable_triangles",
+  "apex",
+  "eave",
+  "wall_infill",
+  "roof_rafters",
+  "leg_rafters",
+];
+
+const SECTION_LABELS: Record<SectionKey, string> = SECTION_KEYS.reduce(
+  (acc, s) => ({ ...acc, [s.key]: s.label }),
+  {} as Record<SectionKey, string>,
+);
+
+const STAGE_ORDER = [
+  "material_prep",
+  "material_application",
+  "welding",
+  "trimming",
+  "bagging",
+] as const;
+
+const STAGE_LABELS: Record<string, string> = {
+  material_prep: "Material prep",
+  material_application: "Material application",
+  welding: "Welding",
+  trimming: "Trimming",
+  bagging: "Bagging",
+};
+
+function kindBadgeVariant(kind: ResolvedBomLine["componentKind"]) {
+  if (kind === "sleeve") return "default" as const;
+  if (kind === "labour") return "secondary" as const;
+  return "outline" as const;
+}
+
+function ManufacturingTab({
+  variantName,
+  result,
+  jobCosts,
+}: {
+  variantName: string | null;
+  result: CalcResult;
+  jobCosts: ReturnType<typeof calculateJobCosts>;
+}) {
+  if (!variantName || jobCosts.lines.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Select a lining variant to see the manufacturing breakdown.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const sectionLines = jobCosts.lines.filter(
+    (l) => l.componentKind !== "labour" && l.sections && l.sections.length > 0,
+  );
+  const generalLines = jobCosts.lines.filter(
+    (l) => l.componentKind !== "labour" && (!l.sections || l.sections.length === 0),
+  );
+  const labourLines = jobCosts.lines.filter((l) => l.componentKind === "labour");
+
+  // Group section lines by section key
+  const bySection = new Map<SectionKey, ResolvedBomLine[]>();
+  for (const l of sectionLines) {
+    for (const s of l.sections ?? []) {
+      if (!bySection.has(s)) bySection.set(s, []);
+      bySection.get(s)!.push(l);
+    }
+  }
+
+  // Group labour by stage
+  const byStage = new Map<string, ResolvedBomLine[]>();
+  for (const l of labourLines) {
+    const key = l.manufacturingStage ?? "__other";
+    if (!byStage.has(key)) byStage.set(key, []);
+    byStage.get(key)!.push(l);
+  }
+  const orderedStageKeys: string[] = [
+    ...STAGE_ORDER.filter((k) => byStage.has(k)),
+    ...Array.from(byStage.keys()).filter(
+      (k) => !STAGE_ORDER.includes(k as (typeof STAGE_ORDER)[number]),
+    ),
+  ];
+
+  // Procurement summary: aggregate by component, group by supplier
+  const procMap = new Map<
+    string,
+    { name: string; supplier: string | null; unit: string; qty: number; cost: number }
+  >();
+  for (const l of jobCosts.lines) {
+    if (l.componentKind === "labour") continue;
+    const cur = procMap.get(l.componentId);
+    if (cur) {
+      cur.qty += l.qty;
+      cur.cost += l.cost;
+    } else {
+      procMap.set(l.componentId, {
+        name: l.componentName,
+        supplier: l.primarySupplierName,
+        unit: l.unit,
+        qty: l.qty,
+        cost: l.cost,
+      });
+    }
+  }
+  const procRows = Array.from(procMap.values()).sort((a, b) => {
+    const sa = a.supplier ?? "\uffff";
+    const sb = b.supplier ?? "\uffff";
+    if (sa !== sb) return sa.localeCompare(sb);
+    return a.name.localeCompare(b.name);
+  });
+
+  const labourTotals = labourLines.reduce(
+    (a, l) => ({ minutes: a.minutes + l.minutes, cost: a.cost + l.cost }),
+    { minutes: 0, cost: 0 },
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+        <Stat label="Variant" value={variantName} />
+        <Stat label="Total panels" value={String(result.totalPanels)} unit="pcs" />
+        <Stat label="Total m²" value={fmt(result.totalM2)} unit="m²" />
+        <Stat label="Total cost" value={fmt(jobCosts.totalCost)} highlight />
+        <Stat label="Materials" value={fmt(jobCosts.materialsCost)} unit="£" />
+        <Stat label="Labour" value={fmt(jobCosts.labourCost)} unit="£" />
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Sleeves and section materials
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Components targeting specific sections. Multi-section lines appear once per section.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {bySection.size === 0 ? (
+            <div className="p-4 text-xs text-muted-foreground">No section-targeted components.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="pl-4">Component</TableHead>
+                  <TableHead>Kind</TableHead>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Cost/unit</TableHead>
+                  <TableHead className="pr-4 text-right">Total cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {MFG_SECTION_ORDER.filter((k) => bySection.has(k)).map((sectionKey) => {
+                  const lines = bySection.get(sectionKey)!;
+                  const sectionM2 = m2BySections(result, [sectionKey]);
+                  return (
+                    <>
+                      <TableRow key={`hdr-${sectionKey}`} className="bg-muted/20">
+                        <TableCell colSpan={6} className="pl-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          {SECTION_LABELS[sectionKey]} — {fmt(sectionM2)} m²
+                        </TableCell>
+                      </TableRow>
+                      {lines.map((l) => {
+                        const qty = l.qtyPerM2 * sectionM2;
+                        const cost = qty * l.costPerUnit;
+                        return (
+                          <TableRow key={`${sectionKey}-${l.componentId}`}>
+                            <TableCell className="pl-4 font-medium">{l.componentName}</TableCell>
+                            <TableCell>
+                              <Badge variant={kindBadgeVariant(l.componentKind)} className="text-[10px] uppercase tracking-wider">
+                                {l.componentKind}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {l.primarySupplierName ?? "—"}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {fmt(qty)} {l.unit}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">{fmt(l.costPerUnit)}</TableCell>
+                            <TableCell className="pr-4 text-right tabular-nums">{fmt(cost)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            General materials
+          </CardTitle>
+          <CardDescription className="text-xs">Components applied across all sections.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {generalLines.length === 0 ? (
+            <div className="p-4 text-xs text-muted-foreground">No general materials.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="pl-4">Component</TableHead>
+                  <TableHead>Kind</TableHead>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Cost/unit</TableHead>
+                  <TableHead className="pr-4 text-right">Total cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {generalLines.map((l) => (
+                  <TableRow key={l.componentId}>
+                    <TableCell className="pl-4 font-medium">{l.componentName}</TableCell>
+                    <TableCell>
+                      <Badge variant={kindBadgeVariant(l.componentKind)} className="text-[10px] uppercase tracking-wider">
+                        {l.componentKind}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {l.primarySupplierName ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {fmt(l.qty)} {l.unit}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{fmt(l.costPerUnit)}</TableCell>
+                    <TableCell className="pr-4 text-right tabular-nums">{fmt(l.cost)}</TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="bg-muted/30 font-semibold">
+                  <TableCell className="pl-4" colSpan={5}>
+                    Total
+                  </TableCell>
+                  <TableCell className="pr-4 text-right tabular-nums">
+                    {fmt(generalLines.reduce((a, l) => a + l.cost, 0))}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Manufacturing labour
+          </CardTitle>
+          <CardDescription className="text-xs">Production hours grouped by stage.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {labourLines.length === 0 ? (
+            <div className="p-4 text-xs text-muted-foreground">No labour components.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="pl-4">Component</TableHead>
+                  <TableHead>Stage</TableHead>
+                  <TableHead className="text-right">Total minutes</TableHead>
+                  <TableHead className="text-right">Total hours</TableHead>
+                  <TableHead className="pr-4 text-right">Total cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orderedStageKeys.map((stageKey) => {
+                  const stageLabel =
+                    stageKey === "__other"
+                      ? "Other"
+                      : STAGE_LABELS[stageKey] ?? stageKey;
+                  return (byStage.get(stageKey) ?? []).map((l) => (
+                    <TableRow key={l.componentId}>
+                      <TableCell className="pl-4 font-medium">{l.componentName}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
+                          {stageLabel}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {l.timeMinutesPerUnit != null ? fmt(l.minutes, 0) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{fmt(l.minutes / 60, 1)}</TableCell>
+                      <TableCell className="pr-4 text-right tabular-nums">{fmt(l.cost)}</TableCell>
+                    </TableRow>
+                  ));
+                })}
+                <TableRow className="bg-muted/30 font-semibold">
+                  <TableCell className="pl-4" colSpan={2}>
+                    Total
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{fmt(labourTotals.minutes, 0)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{fmt(labourTotals.minutes / 60, 1)}</TableCell>
+                  <TableCell className="pr-4 text-right tabular-nums">{fmt(labourTotals.cost)}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Procurement summary
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Each material aggregated across sections, clustered by supplier for ordering.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {procRows.length === 0 ? (
+            <div className="p-4 text-xs text-muted-foreground">Nothing to procure.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="pl-4">Component</TableHead>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead className="text-right">Total qty</TableHead>
+                  <TableHead className="pr-4 text-right">Total cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(() => {
+                  const out: React.ReactNode[] = [];
+                  let lastSupplier: string | null | undefined = undefined;
+                  for (const r of procRows) {
+                    if (r.supplier !== lastSupplier) {
+                      out.push(
+                        <TableRow key={`sup-${r.supplier ?? "none"}`} className="bg-muted/20">
+                          <TableCell colSpan={4} className="pl-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            {r.supplier ?? "No supplier"}
+                          </TableCell>
+                        </TableRow>,
+                      );
+                      lastSupplier = r.supplier;
+                    }
+                    out.push(
+                      <TableRow key={`row-${r.name}-${r.supplier ?? "none"}`}>
+                        <TableCell className="pl-4 font-medium">{r.name}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.supplier ?? "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {fmt(r.qty)} {r.unit}
+                        </TableCell>
+                        <TableCell className="pr-4 text-right tabular-nums">{fmt(r.cost)}</TableCell>
+                      </TableRow>,
+                    );
+                  }
+                  return out;
+                })()}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+        <CardContent className="pt-0">
+          <p className="text-xs text-muted-foreground">
+            Per-line supplier overrides and split sourcing across multiple suppliers will be added in
+            the P&L phase. For now this view uses each component's primary supplier.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
