@@ -15,15 +15,14 @@ export const SECTION_KEYS = [
 ] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number]['key'];
 
-export type LiningTypeId = string;
-
 export interface CalcInput {
   length: number;
   width: number;
   eaveHeight: number;
   pitchDeg: number;
   baySize: number;
-  liningType: LiningTypeId;
+  /** Variant id from lining_variants. May be empty when none selected. */
+  liningType: string;
   roofOverhangEnabled: boolean;
   wallFloorSealEnabled: boolean;
   apexOverride?: number | null;
