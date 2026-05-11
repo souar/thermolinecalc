@@ -686,6 +686,28 @@ function BomDialog({
   const selected = components.find((c) => c.id === componentId);
   const liveCost = Number(qtyM2) * Number(selected?.cost_per_unit ?? 0);
 
+  const isLabour = selected?.kind === "labour";
+  const inferMinutesPerUnit = (c: Component | undefined): number | null => {
+    if (!c) return null;
+    if (c.time_minutes_per_unit != null && Number(c.time_minutes_per_unit) > 0) {
+      return Number(c.time_minutes_per_unit);
+    }
+    const u = (c.unit ?? "").trim().toLowerCase();
+    if (["hour", "hours", "hr", "h"].includes(u)) return 60;
+    if (["minute", "minutes", "min"].includes(u)) return 1;
+    return null;
+  };
+  const minutesPerUnit = inferMinutesPerUnit(selected);
+
+  const qtyPanelNum = Number(qtyPanel) || 0;
+  const qtyM2Num = Number(qtyM2) || 0;
+  const panelM2Num = Number(panelM2) || 0;
+  const minutesPerPanel =
+    isLabour && minutesPerUnit != null ? qtyPanelNum * minutesPerUnit : 0;
+  const minutesPerM2 =
+    isLabour && minutesPerUnit != null ? qtyM2Num * minutesPerUnit : 0;
+  const costPerPanel = qtyPanelNum * Number(selected?.cost_per_unit ?? 0);
+
   const onQtyPanelChange = (v: string) => {
     setQtyPanel(v);
     const p = Number(panelM2);
@@ -700,6 +722,20 @@ function BomDialog({
     setPanelM2(v);
     const p = Number(v);
     setQtyPanel(String(Number(qtyM2) * p));
+  };
+  const onMinutesPerPanelChange = (v: string) => {
+    if (!minutesPerUnit) return;
+    const newQtyPanel = Number(v) / minutesPerUnit;
+    setQtyPanel(String(newQtyPanel));
+    const p = Number(panelM2);
+    if (p > 0) setQtyM2(String(newQtyPanel / p));
+  };
+  const onMinutesPerM2Change = (v: string) => {
+    if (!minutesPerUnit) return;
+    const newQtyM2 = Number(v) / minutesPerUnit;
+    setQtyM2(String(newQtyM2));
+    const p = Number(panelM2);
+    setQtyPanel(String(newQtyM2 * p));
   };
 
   const toggleSection = (k: SectionKey, on: boolean) => {
