@@ -1,43 +1,66 @@
-## What already exists (and how to use it today)
+## The problem
 
-The data model is: **Suppliers → Components → Variant BOM lines → Calculator/Manufacturing**.
+Labour components are priced per time unit (e.g. **Material Prep — £25.00/Hour**), but the BOM line only stores `qty_per_m2` — i.e. "fractional hours per m²". To say "9 minutes per panel" on a 15 m² panel you have to mentally compute `9 / 60 / 15 = 0.01` and type that into Qty per m². Easy to get wrong, and the dialog gives no feedback in minutes.
 
-- **Suppliers** are managed at `/suppliers`.
-- **Components** (sleeves, materials, labour) are managed at `/components`. Each component picks a primary supplier and (for labour) a manufacturing stage + minutes/unit.
-- **Variants** are managed at `/products`. Clicking **View / Edit** opens `/products/:variantId`, which already has a full **Bill of Materials** table with a **+ Add component** button. That dialog lets you pick any sleeve/material/labour component, set qty per panel or qty per m², choose which sections it applies to (roof / walls / gables / apex / all), and set sort order.
-- The calculator reads variants via `fetchVariantsWithBom` (`["lining_variants_with_bom"]`), and the Manufacturing tab + reference cost on the variant detail page derive entirely from those BOM rows.
+The component itself already carries `unit` ("Hour") and `time_minutes_per_unit` (typically 60 for an hourly rate, or 1 if priced per minute), so we have everything we need to convert — we just don't expose it in the BOM editor.
 
-So the missing piece isn't code — it's that none of your three variants (MAL22, MAL30 / ThermoAcoustic, MAL18 / Thermoline) have any BOM lines yet. Until each variant has at least one component attached, the calculator's Cost / Weight / Labour cards and the Manufacturing tab will stay empty.
+## The fix: add minutes-based inputs to the BOM dialog (labour only)
 
-## Proposed changes (discoverability + small UX fixes)
+No schema change. No calculator change. Pure UX improvement in `BomDialog` (`src/routes/products.$variantId.tsx`).
 
-### 1. Make the BOM editor obvious from the variants list
-In `src/routes/products.tsx`:
-- Replace the "View / Edit" button label with **"Edit BOM"** when `# section lines == 0` and base £/m² == 0, otherwise keep "View / Edit".
-- Add an empty-state badge in the row when a variant has zero BOM lines: a small amber `Badge` reading "No components" so it's visually obvious which variants are unconfigured.
-- Add a one-line helper above the table: *"Each variant needs components assigned before it can be used in the calculator. Click a variant to edit its bill of materials."*
+When the selected component has `kind === "labour"`, show two extra inputs **above** the existing Qty fields:
 
-### 2. Quick-add affordance on the variant detail page
-In `src/routes/products.$variantId.tsx`:
-- When the BOM table is empty, replace the "No components yet." row with a friendlier empty state inside the card body: heading "No components attached yet", subtext explaining that the variant won't appear with cost/weight/labour in the calculator until at least one component is added, and a prominent **+ Add your first component** button (same handler as the existing `+ Add component`).
-- If `componentsQ.data` is empty, show a secondary note: *"You have no components defined. Create sleeves, materials and labour in the Components page first."* with a `Link` to `/components`.
+- **Minutes per panel**
+- **Minutes per m²**
 
-### 3. Calculator: hint when the selected variant has no BOM
-In `src/components/CalculatorPanel.tsx`, where `selectedVariant` is resolved:
-- If `selectedVariant && selectedVariant.bom.length === 0`, render a small inline warning under the variant Select: *"This variant has no bill of materials yet. Open it in Products to add components."* with a `Link` to `/products/$variantId`.
+These are two-way bound with the existing `qtyPerM2` / `qtyPerPanel` fields via the component's time unit. The existing fields stay visible (collapsed under a small "Advanced (raw qty)" disclosure) so power users can still see/edit the underlying number, and so non-labour components are unaffected.
 
-### 4. Tiny consistency fix
-In the BOM dialog (`BomDialog`), default `allSections` is true for new rows, which is correct. Confirm the empty-state copy on the detail page mentions: "Sleeves typically apply to specific sections (roof, walls, gables); materials and labour can apply to all sections."
+### Conversion logic
 
-## Out of scope (call out, don't build)
+For a labour component, define `minutesPerUnit`:
+- If `time_minutes_per_unit` is set on the component, use it (this is the canonical field — already populated for labour rows).
+- Otherwise fall back to inferring from `unit`: `hour|hours|hr|h` → 60, `minute|minutes|min` → 1, else treat as 1 with a small inline warning ("Component has no time unit — set it in Components").
 
-- Per-variant supplier overrides (e.g. "use Supplier B's Tecsound just for MAL30") — this is the future "P&L phase" already noted in the Procurement summary. Not in this change.
-- Bulk BOM templating (copy BOM from one variant to another). Would be a nice follow-up.
+Then:
+```
+qtyPerPanel (units, e.g. hours) = minutesPerPanel / minutesPerUnit
+qtyPerM2                        = qtyPerPanel / panelM2
+minutesPerM2                    = minutesPerPanel / panelM2
+```
+
+Editing any one of {minutes/panel, minutes/m², qty/panel, qty/m², panel m²} updates the others. Same pattern as today's two-way binding, just with two more fields in the chain.
+
+### Live readback
+
+Replace the bottom "Cost contribution: £X/m²" chip with a labour-aware version when kind = labour:
+
+> **9 min/panel** · **0.6 min/m²** · **0.15 h/panel** · **£3.75/panel** · **£0.25/m²**
+
+For sleeve/material the chip stays exactly as it is today.
+
+### Selector hint
+
+In the component `<Select>`, when rendering a labour option, append the time unit so users see what they're picking:
+
+> Material Prep — £25.00/Hour (60 min/unit)
+
+## Small accompanying touches
+
+1. **Components page (`src/routes/components.tsx`)** — labour edit form: relabel "Min/unit" to "Minutes per priced unit" and add a one-line helper: *"For an hourly rate enter 60. For a per-minute rate enter 1."* No data change.
+
+2. **BOM table column** — in the BOM table row on the variant detail page, for labour rows show a small grey suffix under Qty/m² with the minutes equivalent: `0.0100 (0.6 min/m²)`. Read-only, helps sanity-check existing rows.
+
+## Why not change the schema instead?
+
+Three options were considered:
+
+- **(A) Add `minutes_per_panel` column on `lining_variant_components`** — duplicates data, two sources of truth, calculator still needs qty_per_m2. Rejected.
+- **(B) Change labour pricing to be per-minute everywhere** — forces editing all existing labour components, breaks the "£/Hour" mental model used in supplier pricing. Rejected.
+- **(C) Compute in the dialog only, store qty_per_m2 unchanged** — zero schema risk, calculator unchanged, fixes the actual UX problem. **Chosen.**
 
 ## Files touched
 
-- `src/routes/products.tsx` — list-page empty-state badge, helper text, button label.
-- `src/routes/products.$variantId.tsx` — friendlier empty state inside the BOM card.
-- `src/components/CalculatorPanel.tsx` — inline "no BOM" warning under the variant selector.
+- `src/routes/products.$variantId.tsx` — `BomDialog`: minutes inputs, two-way bindings, labour-aware readback chip, richer labour `<SelectItem>` label. Plus the small "(N min/m²)" suffix on the BOM table for labour rows.
+- `src/routes/components.tsx` — relabel + helper text for the labour "minutes per priced unit" field. No logic change.
 
-No DB schema changes, no new queries, no migrations.
+No DB migration. No calculator change. No new queries.
