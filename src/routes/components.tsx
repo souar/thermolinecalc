@@ -547,7 +547,7 @@ function ComponentDialog({
         )}
 
         {showLabourFields && (
-          <Field label="Minutes / unit" id="cmp-min">
+          <Field label="Minutes per priced unit" id="cmp-min">
             <Input
               id="cmp-min"
               type="number"
@@ -555,6 +555,9 @@ function ComponentDialog({
               value={form.time_minutes_per_unit}
               onChange={(e) => upd("time_minutes_per_unit")(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              For an hourly rate enter <span className="font-medium">60</span>. For a per-minute rate enter <span className="font-medium">1</span>.
+            </p>
           </Field>
         )}
 
