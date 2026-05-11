@@ -776,11 +776,15 @@ function BomDialog({
                 grouped[kind].length > 0 ? (
                   <SelectGroup key={kind}>
                     <SelectLabel>{KIND_LABEL[kind]}</SelectLabel>
-                    {grouped[kind].map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} — £{Number(c.cost_per_unit).toFixed(2)}/{c.unit}
-                      </SelectItem>
-                    ))}
+                    {grouped[kind].map((c) => {
+                      const mpu = inferMinutesPerUnit(c);
+                      return (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} — £{Number(c.cost_per_unit).toFixed(2)}/{c.unit}
+                          {kind === "labour" && mpu != null ? ` (${mpu} min/unit)` : ""}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectGroup>
                 ) : null,
               )}
