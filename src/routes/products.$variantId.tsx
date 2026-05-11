@@ -792,7 +792,6 @@ function BomDialog({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
         {isLabour && (
           <div className="rounded border border-border bg-muted/30 p-3 space-y-3">
             <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
