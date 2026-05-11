@@ -372,6 +372,11 @@ function ProductDetail() {
                         </TableCell>
                         <TableCell className="text-right tabular">
                           {Number(r.qty_per_m2).toFixed(4)}
+                          {r.components?.kind === "labour" && r.components.time_minutes_per_unit ? (
+                            <div className="text-[10px] font-normal text-muted-foreground">
+                              {(Number(r.qty_per_m2) * Number(r.components.time_minutes_per_unit)).toFixed(2)} min/m²
+                            </div>
+                          ) : null}
                         </TableCell>
                         <TableCell>{r.components?.unit ?? "—"}</TableCell>
                         <TableCell className="text-right tabular">
