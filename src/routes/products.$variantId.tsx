@@ -59,6 +59,7 @@ type Component = {
   unit: string;
   cost_per_unit: number;
   manufacturing_stage: string | null;
+  time_minutes_per_unit: number | null;
 };
 
 type BomRow = {
@@ -371,6 +372,11 @@ function ProductDetail() {
                         </TableCell>
                         <TableCell className="text-right tabular">
                           {Number(r.qty_per_m2).toFixed(4)}
+                          {r.components?.kind === "labour" && r.components.time_minutes_per_unit ? (
+                            <div className="text-[10px] font-normal text-muted-foreground">
+                              {(Number(r.qty_per_m2) * Number(r.components.time_minutes_per_unit)).toFixed(2)} min/m²
+                            </div>
+                          ) : null}
                         </TableCell>
                         <TableCell>{r.components?.unit ?? "—"}</TableCell>
                         <TableCell className="text-right tabular">
@@ -680,6 +686,28 @@ function BomDialog({
   const selected = components.find((c) => c.id === componentId);
   const liveCost = Number(qtyM2) * Number(selected?.cost_per_unit ?? 0);
 
+  const isLabour = selected?.kind === "labour";
+  const inferMinutesPerUnit = (c: Component | undefined): number | null => {
+    if (!c) return null;
+    if (c.time_minutes_per_unit != null && Number(c.time_minutes_per_unit) > 0) {
+      return Number(c.time_minutes_per_unit);
+    }
+    const u = (c.unit ?? "").trim().toLowerCase();
+    if (["hour", "hours", "hr", "h"].includes(u)) return 60;
+    if (["minute", "minutes", "min"].includes(u)) return 1;
+    return null;
+  };
+  const minutesPerUnit = inferMinutesPerUnit(selected);
+
+  const qtyPanelNum = Number(qtyPanel) || 0;
+  const qtyM2Num = Number(qtyM2) || 0;
+  const panelM2Num = Number(panelM2) || 0;
+  const minutesPerPanel =
+    isLabour && minutesPerUnit != null ? qtyPanelNum * minutesPerUnit : 0;
+  const minutesPerM2 =
+    isLabour && minutesPerUnit != null ? qtyM2Num * minutesPerUnit : 0;
+  const costPerPanel = qtyPanelNum * Number(selected?.cost_per_unit ?? 0);
+
   const onQtyPanelChange = (v: string) => {
     setQtyPanel(v);
     const p = Number(panelM2);
@@ -694,6 +722,20 @@ function BomDialog({
     setPanelM2(v);
     const p = Number(v);
     setQtyPanel(String(Number(qtyM2) * p));
+  };
+  const onMinutesPerPanelChange = (v: string) => {
+    if (!minutesPerUnit) return;
+    const newQtyPanel = Number(v) / minutesPerUnit;
+    setQtyPanel(String(newQtyPanel));
+    const p = Number(panelM2);
+    if (p > 0) setQtyM2(String(newQtyPanel / p));
+  };
+  const onMinutesPerM2Change = (v: string) => {
+    if (!minutesPerUnit) return;
+    const newQtyM2 = Number(v) / minutesPerUnit;
+    setQtyM2(String(newQtyM2));
+    const p = Number(panelM2);
+    setQtyPanel(String(newQtyM2 * p));
   };
 
   const toggleSection = (k: SectionKey, on: boolean) => {
@@ -734,11 +776,15 @@ function BomDialog({
                 grouped[kind].length > 0 ? (
                   <SelectGroup key={kind}>
                     <SelectLabel>{KIND_LABEL[kind]}</SelectLabel>
-                    {grouped[kind].map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} — £{Number(c.cost_per_unit).toFixed(2)}/{c.unit}
-                      </SelectItem>
-                    ))}
+                    {grouped[kind].map((c) => {
+                      const mpu = inferMinutesPerUnit(c);
+                      return (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} — £{Number(c.cost_per_unit).toFixed(2)}/{c.unit}
+                          {kind === "labour" && mpu != null ? ` (${mpu} min/unit)` : ""}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectGroup>
                 ) : null,
               )}
@@ -746,9 +792,57 @@ function BomDialog({
           </Select>
         </div>
 
+        {isLabour && (
+          <div className="rounded border border-border bg-muted/30 p-3 space-y-3">
+            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Labour time
+            </div>
+            {minutesPerUnit == null ? (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                This component has no time unit set. Open it in{" "}
+                <Link to="/components" className="underline">Components</Link>{" "}
+                and set "Minutes per priced unit" (e.g. 60 for an hourly rate).
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-1.5">
+                    <Label>Minutes per panel</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={
+                        minutesPerUnit ? String(qtyPanelNum * minutesPerUnit) : ""
+                      }
+                      onChange={(e) => onMinutesPerPanelChange(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label>Minutes per m²</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={
+                        minutesPerUnit ? String(qtyM2Num * minutesPerUnit) : ""
+                      }
+                      onChange={(e) => onMinutesPerM2Change(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Priced at £{Number(selected?.cost_per_unit ?? 0).toFixed(2)}/{selected?.unit}
+                  {" · "}{minutesPerUnit} min per priced unit
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-1.5">
-            <Label>Qty per panel</Label>
+            <Label className={isLabour ? "text-xs text-muted-foreground" : ""}>
+              {isLabour ? "Qty per panel (raw, in priced units)" : "Qty per panel"}
+            </Label>
             <Input
               type="number"
               step="0.0001"
@@ -757,7 +851,9 @@ function BomDialog({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label>Qty per m²</Label>
+            <Label className={isLabour ? "text-xs text-muted-foreground" : ""}>
+              {isLabour ? "Qty per m² (raw, in priced units)" : "Qty per m²"}
+            </Label>
             <Input
               type="number"
               step="0.0001"
@@ -815,9 +911,25 @@ function BomDialog({
             />
           </div>
           <div className="flex flex-col justify-end">
-            <div className="rounded bg-muted px-3 py-2 text-sm">
-              Cost contribution:{" "}
-              <span className="font-semibold tabular">£{liveCost.toFixed(2)}/m²</span>
+            <div className="rounded bg-muted px-3 py-2 text-sm space-y-0.5">
+              {isLabour && minutesPerUnit != null ? (
+                <>
+                  <div>
+                    <span className="font-semibold tabular">{minutesPerPanel.toFixed(1)} min/panel</span>
+                    <span className="text-muted-foreground"> · {minutesPerM2.toFixed(2)} min/m²</span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    <span className="tabular">£{costPerPanel.toFixed(2)}/panel</span>
+                    <span> · </span>
+                    <span className="tabular">£{liveCost.toFixed(2)}/m²</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  Cost contribution:{" "}
+                  <span className="font-semibold tabular">£{liveCost.toFixed(2)}/m²</span>
+                </>
+              )}
             </div>
           </div>
         </div>
