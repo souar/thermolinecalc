@@ -793,8 +793,57 @@ function BomDialog({
         </div>
 
         <div className="grid grid-cols-2 gap-4">
+        {isLabour && (
+          <div className="rounded border border-border bg-muted/30 p-3 space-y-3">
+            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Labour time
+            </div>
+            {minutesPerUnit == null ? (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                This component has no time unit set. Open it in{" "}
+                <Link to="/components" className="underline">Components</Link>{" "}
+                and set "Minutes per priced unit" (e.g. 60 for an hourly rate).
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-1.5">
+                    <Label>Minutes per panel</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={
+                        minutesPerUnit ? String(qtyPanelNum * minutesPerUnit) : ""
+                      }
+                      onChange={(e) => onMinutesPerPanelChange(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label>Minutes per m²</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={
+                        minutesPerUnit ? String(qtyM2Num * minutesPerUnit) : ""
+                      }
+                      onChange={(e) => onMinutesPerM2Change(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Priced at £{Number(selected?.cost_per_unit ?? 0).toFixed(2)}/{selected?.unit}
+                  {" · "}{minutesPerUnit} min per priced unit
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-1.5">
-            <Label>Qty per panel</Label>
+            <Label className={isLabour ? "text-xs text-muted-foreground" : ""}>
+              {isLabour ? "Qty per panel (raw, in priced units)" : "Qty per panel"}
+            </Label>
             <Input
               type="number"
               step="0.0001"
@@ -803,7 +852,9 @@ function BomDialog({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label>Qty per m²</Label>
+            <Label className={isLabour ? "text-xs text-muted-foreground" : ""}>
+              {isLabour ? "Qty per m² (raw, in priced units)" : "Qty per m²"}
+            </Label>
             <Input
               type="number"
               step="0.0001"
