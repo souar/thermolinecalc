@@ -59,6 +59,7 @@ type Component = {
   unit: string;
   cost_per_unit: number;
   manufacturing_stage: string | null;
+  time_minutes_per_unit: number | null;
 };
 
 type BomRow = {
