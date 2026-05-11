@@ -911,9 +911,25 @@ function BomDialog({
             />
           </div>
           <div className="flex flex-col justify-end">
-            <div className="rounded bg-muted px-3 py-2 text-sm">
-              Cost contribution:{" "}
-              <span className="font-semibold tabular">£{liveCost.toFixed(2)}/m²</span>
+            <div className="rounded bg-muted px-3 py-2 text-sm space-y-0.5">
+              {isLabour && minutesPerUnit != null ? (
+                <>
+                  <div>
+                    <span className="font-semibold tabular">{minutesPerPanel.toFixed(1)} min/panel</span>
+                    <span className="text-muted-foreground"> · {minutesPerM2.toFixed(2)} min/m²</span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    <span className="tabular">£{costPerPanel.toFixed(2)}/panel</span>
+                    <span> · </span>
+                    <span className="tabular">£{liveCost.toFixed(2)}/m²</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  Cost contribution:{" "}
+                  <span className="font-semibold tabular">£{liveCost.toFixed(2)}/m²</span>
+                </>
+              )}
             </div>
           </div>
         </div>
