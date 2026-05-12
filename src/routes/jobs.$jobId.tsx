@@ -151,6 +151,59 @@ function JobPage() {
 
   const canSave = !!input.liningType && !variantsQ.isLoading && !saveSpec.isPending;
 
+  // Edit / delete job
+  const [editOpen, setEditOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [form, setForm] = useState({ name: "", reference: "", reference_url: "", notes: "" });
+  useEffect(() => {
+    if (job) setForm({
+      name: job.name ?? "",
+      reference: job.reference ?? "",
+      reference_url: job.reference_url ?? "",
+      notes: job.notes ?? "",
+    });
+  }, [job]);
+
+  const updateJob = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("jobs").update({
+        name: form.name,
+        reference: form.reference || null,
+        reference_url: form.reference_url || null,
+        notes: form.notes || null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", jobId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Job updated");
+      setEditOpen(false);
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const deleteJob = useMutation({
+    mutationFn: async () => {
+      const specIds = revisions.map((s) => s.id);
+      if (specIds.length > 0) {
+        await supabase.from("lining_results").delete().in("spec_id", specIds);
+        await supabase.from("marquee_specs").delete().eq("job_id", jobId);
+      }
+      const { error } = await supabase.from("jobs").delete().eq("id", jobId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Job deleted");
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      if (job?.customers?.id) navigate({ to: "/customers/$customerId", params: { customerId: job.customers.id } });
+      else navigate({ to: "/" });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
