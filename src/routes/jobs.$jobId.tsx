@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +6,15 @@ import { CalculatorPanel } from "@/components/CalculatorPanel";
 import { CalcInput, DEFAULT_INPUT, DEFAULT_INSTALL_INPUT, InstallInput, calculate, calculateJobCosts } from "@/lib/calculator";
 import { fetchVariantsWithBom, VARIANTS_QUERY_KEY, type VariantWithBom } from "@/lib/variantsQuery";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, ExternalLink, Save, Pencil } from "lucide-react";
 import { getUsername } from "@/lib/username";
 import { toast } from "sonner";
 
@@ -17,6 +25,7 @@ export const Route = createFileRoute("/jobs/$jobId")({
 function JobPage() {
   const { jobId } = Route.useParams();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const jobQ = useQuery({
     queryKey: ["job", jobId],
@@ -142,6 +151,59 @@ function JobPage() {
 
   const canSave = !!input.liningType && !variantsQ.isLoading && !saveSpec.isPending;
 
+  // Edit / delete job
+  const [editOpen, setEditOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [form, setForm] = useState({ name: "", reference: "", reference_url: "", notes: "" });
+  useEffect(() => {
+    if (job) setForm({
+      name: job.name ?? "",
+      reference: job.reference ?? "",
+      reference_url: job.reference_url ?? "",
+      notes: job.notes ?? "",
+    });
+  }, [job]);
+
+  const updateJob = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("jobs").update({
+        name: form.name,
+        reference: form.reference || null,
+        reference_url: form.reference_url || null,
+        notes: form.notes || null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", jobId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Job updated");
+      setEditOpen(false);
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const deleteJob = useMutation({
+    mutationFn: async () => {
+      const specIds = revisions.map((s) => s.id);
+      if (specIds.length > 0) {
+        await supabase.from("lining_results").delete().in("spec_id", specIds);
+        await supabase.from("marquee_specs").delete().eq("job_id", jobId);
+      }
+      const { error } = await supabase.from("jobs").delete().eq("id", jobId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Job deleted");
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      if (job?.customers?.id) navigate({ to: "/customers/$customerId", params: { customerId: job.customers.id } });
+      else navigate({ to: "/" });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -151,7 +213,19 @@ function JobPage() {
               <ArrowLeft className="h-4 w-4" /> {job.customers.name}
             </Link>
           )}
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">{job?.name ?? "…"}</h1>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight flex items-center gap-2">
+            {job?.name ?? "…"}
+            {job && (
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Edit job"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+          </h1>
           {job?.reference && (
             <div className="mt-1 text-sm">
               {job.reference_url ? (
@@ -204,6 +278,57 @@ function JobPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit job</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Job name</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Reference</Label>
+                <Input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Reference URL</Label>
+                <Input value={form.reference_url} onChange={(e) => setForm({ ...form, reference_url: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} />
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button variant="destructive" onClick={() => { setEditOpen(false); setConfirmDelete(true); }}>
+              Delete
+            </Button>
+            <Button onClick={() => updateJob.mutate()} disabled={!form.name.trim() || updateJob.isPending}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {job?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the job and all {revisions.length} saved revision(s).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={deleteJob.isPending} onClick={() => deleteJob.mutate()}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
