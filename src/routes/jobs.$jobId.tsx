@@ -213,7 +213,19 @@ function JobPage() {
               <ArrowLeft className="h-4 w-4" /> {job.customers.name}
             </Link>
           )}
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">{job?.name ?? "…"}</h1>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight flex items-center gap-2">
+            {job?.name ?? "…"}
+            {job && (
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Edit job"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+          </h1>
           {job?.reference && (
             <div className="mt-1 text-sm">
               {job.reference_url ? (
