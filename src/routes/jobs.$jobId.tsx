@@ -278,6 +278,57 @@ function JobPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit job</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Job name</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Reference</Label>
+                <Input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Reference URL</Label>
+                <Input value={form.reference_url} onChange={(e) => setForm({ ...form, reference_url: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} />
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button variant="destructive" onClick={() => { setEditOpen(false); setConfirmDelete(true); }}>
+              Delete
+            </Button>
+            <Button onClick={() => updateJob.mutate()} disabled={!form.name.trim() || updateJob.isPending}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {job?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the job and all {revisions.length} saved revision(s).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={deleteJob.isPending} onClick={() => deleteJob.mutate()}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
