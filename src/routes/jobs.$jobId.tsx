@@ -25,6 +25,7 @@ export const Route = createFileRoute("/jobs/$jobId")({
 function JobPage() {
   const { jobId } = Route.useParams();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const jobQ = useQuery({
     queryKey: ["job", jobId],
