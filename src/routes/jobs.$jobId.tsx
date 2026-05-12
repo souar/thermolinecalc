@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +6,15 @@ import { CalculatorPanel } from "@/components/CalculatorPanel";
 import { CalcInput, DEFAULT_INPUT, DEFAULT_INSTALL_INPUT, InstallInput, calculate, calculateJobCosts } from "@/lib/calculator";
 import { fetchVariantsWithBom, VARIANTS_QUERY_KEY, type VariantWithBom } from "@/lib/variantsQuery";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, ExternalLink, Save, Pencil } from "lucide-react";
 import { getUsername } from "@/lib/username";
 import { toast } from "sonner";
 
