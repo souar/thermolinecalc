@@ -25,7 +25,9 @@ type BayRow = {
   custom?: boolean;
 };
 
-export function BayDiagram({ input, result, panelW, panelH, projectName, variantName }: Props) {
+export function BayDiagram({ input, result, panelW, panelH, projectName, variantName, svgRef }: Props) {
+  const localRef = useRef<SVGSVGElement>(null);
+  const ref = (svgRef as React.RefObject<SVGSVGElement> | undefined) ?? localRef;
   const { width, eaveHeight, length } = input;
   const { ridgeHeight, wallStacks, customWallInfill, apexWidth, customRoofEave, slopeLength } = result;
   const roofPanelsPerSide = result.bays > 0 ? result.roofPanels / 2 / result.bays : 0;
