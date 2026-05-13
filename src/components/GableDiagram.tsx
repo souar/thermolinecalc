@@ -8,9 +8,11 @@ interface Props {
   result: CalcResult;
   panelW: number;
   panelH: number;
+  projectName?: string;
+  variantName?: string | null;
 }
 
-export function GableDiagram({ input, result, panelW, panelH }: Props) {
+export function GableDiagram({ input, result, panelW, panelH, projectName, variantName }: Props) {
   const { width, length } = input;
   const { ridgeHeight, wallStacks, gableWallsPanels, gableTriCount, gableInfillCount, gableTriSlices } = result;
   const stackH = wallStacks * panelH;
