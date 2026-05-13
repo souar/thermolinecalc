@@ -188,7 +188,6 @@ export function GableDiagram({ input, result, panelW, panelH, projectName, varia
             items={[
               { color: CAD_COLORS.panelEdgeGreen, label: "gable edge" },
               { color: CAD_COLORS.panelEdgeBlue, label: "infill edge" },
-              { color: CAD_COLORS.panelEdgePink, label: "ridge edge" },
             ]}
             width={vbW - (ox + width + 5) - 0.3}
           />
@@ -198,8 +197,9 @@ export function GableDiagram({ input, result, panelW, panelH, projectName, varia
             x={ox + width + 5}
             y={vbH - padB + 0.3}
             width={vbW - (ox + width + 5) - 0.3}
-            project="Marquee Gable"
-            dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
+            project={`${projectName ?? "Marquee Gable"} – Gable elevation`}
+            dims={`${fmt(length, 0)}×${fmt(width, 0)}m · eave ${fmt(input.eaveHeight)}m · pitch ${Math.round((Math.atan2(ridgeHeight, width / 2) * 180) / Math.PI)}°`}
+            panelSpec={variantName ?? null}
           />
         </CadFrame>
 
