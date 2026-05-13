@@ -95,7 +95,6 @@ export function RoofPlanDiagram({ input, result, projectName, variantName }: Pro
     { color: CAD_COLORS.fillLowerRoof, label: "Roof Panel" },
     ...(apexWidth > 1e-6 ? [{ color: CAD_COLORS.fillApex, label: "Apex Ridge" }] : []),
     ...(hasEaveCut ? [{ color: CAD_COLORS.fillKeder, label: "Eave Cut" }] : []),
-    { color: CAD_COLORS.fillKeder, label: "Keder Track" },
   ];
 
   return (
