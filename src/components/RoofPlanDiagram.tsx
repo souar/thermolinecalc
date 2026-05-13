@@ -1,12 +1,16 @@
+import { useRef, type Ref } from "react";
 import { CalcInput, CalcResult, fmt } from "@/lib/calculator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_FONT_SM, DimLine, Legend, TitleBlock } from "./diagrams/cad";
+import { DiagramDownloadMenu } from "./diagrams/DiagramDownloadMenu";
+import { slugify } from "@/lib/diagramExport";
 
 interface Props {
   input: CalcInput;
   result: CalcResult;
   projectName?: string;
   variantName?: string | null;
+  svgRef?: Ref<SVGSVGElement>;
 }
 
 /**
@@ -15,7 +19,9 @@ interface Props {
  * Bands are computed dynamically from `roofPanelsPerSide`, `customRoofEave`
  * and `apexWidth` so the diagram matches the actual lining quantities.
  */
-export function RoofPlanDiagram({ input, result, projectName, variantName }: Props) {
+export function RoofPlanDiagram({ input, result, projectName, variantName, svgRef }: Props) {
+  const localRef = useRef<SVGSVGElement>(null);
+  const ref = (svgRef as React.RefObject<SVGSVGElement> | undefined) ?? localRef;
   const { length, width, baySize, panelH: panelHInput } = input;
   const { bays, slopeLength, apexWidth, roofPanelsPerSide, roofPanelHeight, customRoofEave } = result;
 
