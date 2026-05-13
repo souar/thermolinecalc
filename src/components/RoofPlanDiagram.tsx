@@ -216,8 +216,9 @@ export function RoofPlanDiagram({ input, result, projectName, variantName }: Pro
             x={vbW - padR + 0.3}
             y={vbH - padB + 0.3}
             width={vbW - (vbW - padR + 0.3) - 0.3}
-            project="Roof Assembly Plan"
-            dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
+            project={`${projectName ?? "Roof Assembly"} – Roof plan`}
+            dims={`${fmt(length, 0)}×${fmt(width, 0)}m · eave ${fmt(input.eaveHeight)}m · pitch ${Math.round((Math.atan2(result.ridgeHeight, width / 2) * 180) / Math.PI)}°`}
+            panelSpec={variantName ?? null}
           />
         </CadFrame>
       </CardContent>
