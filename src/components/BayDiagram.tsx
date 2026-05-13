@@ -9,6 +9,8 @@ interface Props {
   result: CalcResult;
   panelW: number;
   panelH: number;
+  projectName?: string;
+  variantName?: string | null;
 }
 
 type BayRow = {
@@ -20,7 +22,7 @@ type BayRow = {
   custom?: boolean;
 };
 
-export function BayDiagram({ input, result, panelW, panelH }: Props) {
+export function BayDiagram({ input, result, panelW, panelH, projectName, variantName }: Props) {
   const { width, eaveHeight, length } = input;
   const { ridgeHeight, wallStacks, customWallInfill, apexWidth, customRoofEave, slopeLength } = result;
   const roofPanelsPerSide = result.bays > 0 ? result.roofPanels / 2 / result.bays : 0;
@@ -188,13 +190,13 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             <>
               <polygon
                 points={`${apexLeftX},${apexBaseY} ${apexRightX},${apexBaseY} ${midX},${ridgeY}`}
-                fill={CAD_COLORS.fillApex}
+                fill={CAD_COLORS.fillUpperRoof}
                 stroke={CAD_COLORS.beam}
                 strokeWidth={CAD_STROKE}
                 strokeLinejoin="round"
               />
-              <line x1={apexLeftX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
-              <line x1={apexRightX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
+              <line x1={apexLeftX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgeBlue} strokeWidth={CAD_STROKE_THICK * 0.6} />
+              <line x1={apexRightX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgeBlue} strokeWidth={CAD_STROKE_THICK * 0.6} />
               <TickMark x={apexLeftX} y={apexBaseY} angle={45} />
               <TickMark x={apexRightX} y={apexBaseY} angle={135} />
             </>
@@ -315,9 +317,8 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             x={rightX + 5.5}
             y={padT + 0.2}
             items={[
-              { color: CAD_COLORS.panelEdgeGreen, label: "bottom-edge gable" },
-              { color: CAD_COLORS.panelEdgeBlue, label: "top-edge standard" },
-              { color: CAD_COLORS.panelEdgePink, label: "bottom-edge standard" },
+              { color: CAD_COLORS.tick, label: "Panel connection marking" },
+              { color: CAD_COLORS.panelEdgeBlue, label: "Apex piece" },
             ]}
             width={vbW - (rightX + 5.5) - 0.3}
           />
@@ -327,8 +328,9 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             x={rightX + 5.5}
             y={vbH - padB + 0.3}
             width={vbW - (rightX + 5.5) - 0.3}
-            project="Marquee Lining"
-            dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
+            project={`${projectName ?? "Marquee Lining"} – Cross-section`}
+            dims={`${fmt(length, 0)}×${fmt(width, 0)}m · eave ${fmt(eaveHeight)}m · pitch ${Math.round((Math.atan2(ridgeHeight, width / 2) * 180) / Math.PI)}°`}
+            panelSpec={variantName ?? null}
           />
         </CadFrame>
 

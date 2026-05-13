@@ -248,6 +248,7 @@ function JobPage() {
         onChange={setInput}
         install={install}
         onInstallChange={setInstall}
+        projectName={job?.name}
       />
 
       {revisions.length > 0 && (

@@ -36,9 +36,10 @@ interface Props {
   rightExtra?: React.ReactNode;
   install?: InstallInput;
   onInstallChange?: (v: InstallInput) => void;
+  projectName?: string;
 }
 
-export function CalculatorPanel({ value, onChange, rightExtra, install, onInstallChange }: Props) {
+export function CalculatorPanel({ value, onChange, rightExtra, install, onInstallChange, projectName }: Props) {
   const set = <K extends keyof CalcInput>(k: K, v: CalcInput[K]) => onChange({ ...value, [k]: v });
   const num = (s: string) => (s === "" ? 0 : Number(s));
 
@@ -542,9 +543,9 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
       </TabsContent>
 
       <TabsContent value="diagrams" className="space-y-6">
-        <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
-        <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} />
-        <RoofPlanDiagram input={calcInput} result={result} />
+        <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} projectName={projectName} variantName={selectedVariant?.name ?? null} />
+        <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} projectName={projectName} variantName={selectedVariant?.name ?? null} />
+        <RoofPlanDiagram input={calcInput} result={result} projectName={projectName} variantName={selectedVariant?.name ?? null} />
       </TabsContent>
 
       <TabsContent value="labour" className="space-y-6">

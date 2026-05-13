@@ -5,6 +5,8 @@ import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_FONT_SM, DimLine
 interface Props {
   input: CalcInput;
   result: CalcResult;
+  projectName?: string;
+  variantName?: string | null;
 }
 
 /**
@@ -13,7 +15,7 @@ interface Props {
  * Bands are computed dynamically from `roofPanelsPerSide`, `customRoofEave`
  * and `apexWidth` so the diagram matches the actual lining quantities.
  */
-export function RoofPlanDiagram({ input, result }: Props) {
+export function RoofPlanDiagram({ input, result, projectName, variantName }: Props) {
   const { length, width, baySize, panelH: panelHInput } = input;
   const { bays, slopeLength, apexWidth, roofPanelsPerSide, roofPanelHeight, customRoofEave } = result;
 
@@ -93,7 +95,6 @@ export function RoofPlanDiagram({ input, result }: Props) {
     { color: CAD_COLORS.fillLowerRoof, label: "Roof Panel" },
     ...(apexWidth > 1e-6 ? [{ color: CAD_COLORS.fillApex, label: "Apex Ridge" }] : []),
     ...(hasEaveCut ? [{ color: CAD_COLORS.fillKeder, label: "Eave Cut" }] : []),
-    { color: CAD_COLORS.fillKeder, label: "Keder Track" },
   ];
 
   return (
@@ -118,9 +119,7 @@ export function RoofPlanDiagram({ input, result }: Props) {
             );
           })}
 
-          {/* Keder track strips along eaves */}
-          <rect x={ox} y={oy - 0.15} width={planW} height={0.15} fill={CAD_COLORS.fillKeder} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
-          <rect x={ox} y={oy + planH} width={planW} height={0.15} fill={CAD_COLORS.fillKeder} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
+          {/* Keder track strips removed */}
 
           {/* Outer outline */}
           <rect x={ox} y={oy} width={planW} height={planH} fill="none" stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE} />
@@ -217,8 +216,9 @@ export function RoofPlanDiagram({ input, result }: Props) {
             x={vbW - padR + 0.3}
             y={vbH - padB + 0.3}
             width={vbW - (vbW - padR + 0.3) - 0.3}
-            project="Roof Assembly Plan"
-            dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
+            project={`${projectName ?? "Roof Assembly"} – Roof plan`}
+            dims={`${fmt(length, 0)}×${fmt(width, 0)}m · eave ${fmt(input.eaveHeight)}m · pitch ${Math.round((Math.atan2(result.ridgeHeight, width / 2) * 180) / Math.PI)}°`}
+            panelSpec={variantName ?? null}
           />
         </CadFrame>
       </CardContent>

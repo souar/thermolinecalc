@@ -154,16 +154,18 @@ interface TitleBlockProps {
   project: string;
   dims: string;
   date?: string;
+  panelSpec?: string | null;
   fontSize?: number;
 }
 
 /** Bottom-right project info block. */
-export function TitleBlock({ x, y, width = 8, project, dims, date, fontSize = CAD_FONT_XS }: TitleBlockProps) {
+export function TitleBlock({ x, y, width = 8, project, dims, date, panelSpec, fontSize = CAD_FONT_XS }: TitleBlockProps) {
   const lh = 0.7;
   const lines = [
     { k: "PROJECT", v: project },
     { k: "SIZE", v: dims },
     { k: "DATE", v: date ?? new Date().toISOString().slice(0, 10) },
+    ...(panelSpec ? [{ k: "PANEL SPEC", v: panelSpec }] : []),
   ];
   const h = lines.length * lh + 0.3;
   return (

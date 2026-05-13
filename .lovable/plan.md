@@ -1,23 +1,40 @@
-## Goal
-Add edit (and delete) capability for customers (projects) and jobs.
+## Diagram refinements
 
-## Scope
-- **Customer**: rename from index page (`src/routes/index.tsx`) and from customer detail page (`src/routes/customers.$customerId.tsx`). Allow delete with confirmation.
-- **Job**: edit name / reference / reference_url / notes from customer page (`src/routes/customers.$customerId.tsx`) and from the job detail page (`src/routes/jobs.$jobId.tsx`). Allow delete with confirmation.
+### 1. BayDiagram (`src/components/BayDiagram.tsx`)
 
-## UX
-- Add a small "pencil" edit icon next to each customer card title and each job card title, plus next to the H1 on detail pages.
-- Clicking opens the existing-style `Dialog` pre-filled with current values; "Save" updates via Supabase `update`, then invalidates the relevant queries.
-- Add a "Delete" button inside the same dialog (destructive variant) that uses `AlertDialog` confirmation. Deleting a customer cascades manually: delete jobs → marquee_specs → lining_results first (no FKs in DB), or warn if jobs exist and require deleting jobs first. **Recommended: block customer delete if it has jobs**, to avoid accidental data loss.
-- Deleting a job from the detail page navigates back to the customer.
+- Recolour the apex piece: change polygon `fill` to `CAD_COLORS.fillUpperRoof` (blue) and the two edge lines + `panelEdgePink` strokes to `CAD_COLORS.panelEdgeBlue`.
+- Replace the legend with entries that match what's actually on the canvas:
+  - red — "Panel connection marking" (matches the red `TickMark`s)
+  - blue — "Apex piece"
 
-## Files to edit
-- `src/routes/index.tsx` — add inline edit/delete for each customer card.
-- `src/routes/customers.$customerId.tsx` — edit/delete customer (H1 area), edit/delete job (per card). Reuse the existing job dialog form for edit mode.
-- `src/routes/jobs.$jobId.tsx` — edit/delete buttons in the header for the current job.
+### 2. GableDiagram (`src/components/GableDiagram.tsx`)
 
-## Technical notes
-- All tables already have permissive RLS (`public_all_*`), so plain `supabase.from(...).update(...)` / `.delete()` works.
-- Job delete must also remove related `marquee_specs` (and their `lining_results`) since there are no DB FKs/cascades. Order: `lining_results` (by spec_ids) → `marquee_specs` → `jobs`.
-- Use `AlertDialog` for destructive confirmations, `toast` for feedback, and `queryClient.invalidateQueries` for `["customers"]`, `["customer", id]`, `["jobs", customerId]`, `["job", jobId]`.
-- No schema changes, no new dependencies.
+- Delete the "additional strut" `<text>` label and its leader `<line>` (lines ~156-158).
+- Remove the "ridge edge" (pink) entry from the `Legend` items array.
+
+### 3. RoofPlanDiagram (`src/components/RoofPlanDiagram.tsx`)
+
+- Remove the "Keder Track" entry from `legendItems` 
+- Remove the orange strip too
+
+### 4. Title block — wire to project/variant info
+
+Update `TitleBlock` (`src/components/diagrams/cad.tsx`) so the lines are dynamic:
+
+- `PROJECT` → `"{projectName} – {diagramTitle}"` (e.g. "Gaylord 30×20 – Cross-section")
+- `SIZE` →  (`30×20m`) Add the leg height and roof pitch
+- `DATE` → unchanged
+- New `PANEL SPEC` row → variant name (e.g. "Thermoline 5×3"); only rendered when supplied.
+
+Add optional props `projectName` and `panelSpec` to `TitleBlock`. Each diagram passes its own short `diagramTitle` ("Cross-section", "Gable elevation", "Roof plan") plus the `projectName` and `panelSpec` it receives via props.
+
+Propagate the new context:
+
+- `BayDiagram`, `GableDiagram`, `RoofPlanDiagram` gain optional `projectName?: string` and `variantName?: string | null` props.
+- `CalculatorPanel` (`src/components/CalculatorPanel.tsx`) gains an optional `projectName?: string` prop; passes `projectName` and `selectedVariant?.name` into all three diagrams.
+- `src/routes/jobs.$jobId.tsx` passes `projectName={job?.name}` to `<CalculatorPanel>`.
+- `src/routes/calculator.tsx` passes `projectName="Calculator"` (or omits — falls back to "Marquee Lining").
+
+### Out of scope
+
+- No schema changes, no DB calls, no calculator math changes.

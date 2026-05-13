@@ -8,9 +8,11 @@ interface Props {
   result: CalcResult;
   panelW: number;
   panelH: number;
+  projectName?: string;
+  variantName?: string | null;
 }
 
-export function GableDiagram({ input, result, panelW, panelH }: Props) {
+export function GableDiagram({ input, result, panelW, panelH, projectName, variantName }: Props) {
   const { width, length } = input;
   const { ridgeHeight, wallStacks, gableWallsPanels, gableTriCount, gableInfillCount, gableTriSlices } = result;
   const stackH = wallStacks * panelH;
@@ -153,9 +155,7 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
             </g>
           ))}
 
-          {/* Additional strut callout near apex */}
-          <text x={midX + 1.2} y={ridgeY + 0.6} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} fontStyle="italic" style={{ fontFamily: "ui-serif, Georgia, serif" }}>additional strut</text>
-          <line x1={midX + 1.1} y1={ridgeY + 0.55} x2={midX + 0.05} y2={ridgeY + 0.2} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+          {/* Additional strut callout removed */}
 
           {/* Rafter flap labels on legs (if enabled) */}
           {input.legRaftersEnabled && [ox, ox + width].map((x, side) => (
@@ -188,7 +188,6 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
             items={[
               { color: CAD_COLORS.panelEdgeGreen, label: "gable edge" },
               { color: CAD_COLORS.panelEdgeBlue, label: "infill edge" },
-              { color: CAD_COLORS.panelEdgePink, label: "ridge edge" },
             ]}
             width={vbW - (ox + width + 5) - 0.3}
           />
@@ -198,8 +197,9 @@ export function GableDiagram({ input, result, panelW, panelH }: Props) {
             x={ox + width + 5}
             y={vbH - padB + 0.3}
             width={vbW - (ox + width + 5) - 0.3}
-            project="Marquee Gable"
-            dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
+            project={`${projectName ?? "Marquee Gable"} – Gable elevation`}
+            dims={`${fmt(length, 0)}×${fmt(width, 0)}m · eave ${fmt(input.eaveHeight)}m · pitch ${Math.round((Math.atan2(ridgeHeight, width / 2) * 180) / Math.PI)}°`}
+            panelSpec={variantName ?? null}
           />
         </CadFrame>
 
