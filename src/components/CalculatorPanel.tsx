@@ -550,9 +550,40 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
       </TabsContent>
 
       <TabsContent value="diagrams" className="space-y-6">
-        <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} projectName={projectName} variantName={selectedVariant?.name ?? null} />
-        <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} projectName={projectName} variantName={selectedVariant?.name ?? null} />
-        <RoofPlanDiagram input={calcInput} result={result} projectName={projectName} variantName={selectedVariant?.name ?? null} />
+        <div className="flex justify-end">
+          <Button
+            variant="default"
+            size="sm"
+            className="gap-1.5"
+            onClick={async () => {
+              const items = [
+                { svg: bayRef.current, title: "Cross-section" },
+                { svg: gableRef.current, title: "Gable elevation" },
+                { svg: roofRef.current, title: "Roof plan" },
+              ].filter((i): i is { svg: SVGSVGElement; title: string } => !!i.svg);
+              if (items.length === 0) {
+                toast.error("Diagrams not ready");
+                return;
+              }
+              try {
+                await downloadCombinedPDF(
+                  items,
+                  `${slugify(projectName ?? "marquee")}-diagrams`,
+                  { projectName, variantName: selectedVariant?.name ?? null },
+                );
+              } catch (e) {
+                console.error(e);
+                toast.error("Download failed");
+              }
+            }}
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            Download all (PDF)
+          </Button>
+        </div>
+        <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} projectName={projectName} variantName={selectedVariant?.name ?? null} svgRef={bayRef} />
+        <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} projectName={projectName} variantName={selectedVariant?.name ?? null} svgRef={gableRef} />
+        <RoofPlanDiagram input={calcInput} result={result} projectName={projectName} variantName={selectedVariant?.name ?? null} svgRef={roofRef} />
       </TabsContent>
 
       <TabsContent value="labour" className="space-y-6">
