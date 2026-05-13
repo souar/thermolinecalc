@@ -186,10 +186,16 @@ export function TitleBlock({ x, y, width = 8, project, dims, date, panelSpec, fo
 }
 
 /** White CAD canvas wrapper — provides white background & frame. */
-export function CadFrame({ children, vbW, vbH }: { children: ReactNode; vbW: number; vbH: number }) {
+export function CadFrame({ children, vbW, vbH, svgRef }: { children: ReactNode; vbW: number; vbH: number; svgRef?: React.Ref<SVGSVGElement> }) {
   return (
     <div className="rounded-lg border border-border bg-white p-4">
-      <svg viewBox={`0 0 ${vbW} ${vbH}`} className="mx-auto h-auto w-full max-h-[70vh]" preserveAspectRatio="xMidYMid meet">
+      <svg
+        ref={svgRef}
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox={`0 0 ${vbW} ${vbH}`}
+        className="mx-auto h-auto w-full max-h-[70vh]"
+        preserveAspectRatio="xMidYMid meet"
+      >
         <rect x={0} y={0} width={vbW} height={vbH} fill="#fff" />
         {children}
       </svg>
