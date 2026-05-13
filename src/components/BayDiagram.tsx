@@ -317,9 +317,8 @@ export function BayDiagram({ input, result, panelW, panelH, projectName, variant
             x={rightX + 5.5}
             y={padT + 0.2}
             items={[
-              { color: CAD_COLORS.panelEdgeGreen, label: "bottom-edge gable" },
-              { color: CAD_COLORS.panelEdgeBlue, label: "top-edge standard" },
-              { color: CAD_COLORS.panelEdgePink, label: "bottom-edge standard" },
+              { color: CAD_COLORS.tick, label: "Panel connection marking" },
+              { color: CAD_COLORS.panelEdgeBlue, label: "Apex piece" },
             ]}
             width={vbW - (rightX + 5.5) - 0.3}
           />
@@ -329,8 +328,9 @@ export function BayDiagram({ input, result, panelW, panelH, projectName, variant
             x={rightX + 5.5}
             y={vbH - padB + 0.3}
             width={vbW - (rightX + 5.5) - 0.3}
-            project="Marquee Lining"
-            dims={`${fmt(length, 0)}×${fmt(width, 0)}m`}
+            project={`${projectName ?? "Marquee Lining"} – Cross-section`}
+            dims={`${fmt(length, 0)}×${fmt(width, 0)}m · eave ${fmt(eaveHeight)}m · pitch ${Math.round((Math.atan2(ridgeHeight, width / 2) * 180) / Math.PI)}°`}
+            panelSpec={variantName ?? null}
           />
         </CadFrame>
 
