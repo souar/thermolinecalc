@@ -105,13 +105,14 @@ export function RoofPlanDiagram({ input, result, projectName, variantName, svgRe
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Roof plan (top-down)
         </CardTitle>
+        <DiagramDownloadMenu getSvg={() => ref.current} filename={`${slugify(projectName ?? "marquee")}-roof-plan`} />
       </CardHeader>
       <CardContent>
-        <CadFrame vbW={vbW} vbH={vbH}>
+        <CadFrame vbW={vbW} vbH={vbH} svgRef={ref}>
           {/* Band fills */}
           {bandsScaled.map((b, i) => {
             const fill =
