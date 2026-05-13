@@ -144,13 +144,14 @@ export function BayDiagram({ input, result, panelW, panelH, projectName, variant
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Single bay (cross-section)
         </CardTitle>
+        <DiagramDownloadMenu getSvg={() => ref.current} filename={`${slugify(projectName ?? "marquee")}-cross-section`} />
       </CardHeader>
       <CardContent className="space-y-6">
-        <CadFrame vbW={vbW} vbH={vbH}>
+        <CadFrame vbW={vbW} vbH={vbH} svgRef={ref}>
           {/* Ground line */}
           <line x1={ox - 1} y1={groundY} x2={ox + width + 1} y2={groundY} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE} />
           {/* Ground hatching */}
