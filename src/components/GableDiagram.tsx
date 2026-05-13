@@ -1,7 +1,10 @@
+import { useRef, type Ref } from "react";
 import { CalcInput, CalcResult, fmt } from "@/lib/calculator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_FONT_SM, DimLine, Legend, PartLabel, TickMark, TitleBlock } from "./diagrams/cad";
+import { DiagramDownloadMenu } from "./diagrams/DiagramDownloadMenu";
+import { slugify } from "@/lib/diagramExport";
 
 interface Props {
   input: CalcInput;
@@ -10,9 +13,12 @@ interface Props {
   panelH: number;
   projectName?: string;
   variantName?: string | null;
+  svgRef?: Ref<SVGSVGElement>;
 }
 
-export function GableDiagram({ input, result, panelW, panelH, projectName, variantName }: Props) {
+export function GableDiagram({ input, result, panelW, panelH, projectName, variantName, svgRef }: Props) {
+  const localRef = useRef<SVGSVGElement>(null);
+  const ref = (svgRef as React.RefObject<SVGSVGElement> | undefined) ?? localRef;
   const { width, length } = input;
   const { ridgeHeight, wallStacks, gableWallsPanels, gableTriCount, gableInfillCount, gableTriSlices } = result;
   const stackH = wallStacks * panelH;
