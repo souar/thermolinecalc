@@ -119,9 +119,7 @@ export function RoofPlanDiagram({ input, result, projectName, variantName }: Pro
             );
           })}
 
-          {/* Keder track strips along eaves */}
-          <rect x={ox} y={oy - 0.15} width={planW} height={0.15} fill={CAD_COLORS.fillKeder} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
-          <rect x={ox} y={oy + planH} width={planW} height={0.15} fill={CAD_COLORS.fillKeder} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE_THIN} />
+          {/* Keder track strips removed */}
 
           {/* Outer outline */}
           <rect x={ox} y={oy} width={planW} height={planH} fill="none" stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE} />
