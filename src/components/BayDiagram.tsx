@@ -190,13 +190,13 @@ export function BayDiagram({ input, result, panelW, panelH, projectName, variant
             <>
               <polygon
                 points={`${apexLeftX},${apexBaseY} ${apexRightX},${apexBaseY} ${midX},${ridgeY}`}
-                fill={CAD_COLORS.fillApex}
+                fill={CAD_COLORS.fillUpperRoof}
                 stroke={CAD_COLORS.beam}
                 strokeWidth={CAD_STROKE}
                 strokeLinejoin="round"
               />
-              <line x1={apexLeftX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
-              <line x1={apexRightX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgePink} strokeWidth={CAD_STROKE_THICK * 0.6} />
+              <line x1={apexLeftX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgeBlue} strokeWidth={CAD_STROKE_THICK * 0.6} />
+              <line x1={apexRightX} y1={apexBaseY} x2={midX} y2={ridgeY} stroke={CAD_COLORS.panelEdgeBlue} strokeWidth={CAD_STROKE_THICK * 0.6} />
               <TickMark x={apexLeftX} y={apexBaseY} angle={45} />
               <TickMark x={apexRightX} y={apexBaseY} angle={135} />
             </>
