@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CalcInput,
@@ -21,7 +21,10 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, HardHat, Factory, LayoutDashboard, Ruler } from "lucide-react";
+import { AlertTriangle, HardHat, Factory, LayoutDashboard, Ruler, FileDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { downloadCombinedPDF, slugify } from "@/lib/diagramExport";
+import { toast } from "sonner";
 import { BayDiagram } from "./BayDiagram";
 import { GableDiagram } from "./GableDiagram";
 import { RoofPlanDiagram } from "./RoofPlanDiagram";
@@ -42,6 +45,10 @@ interface Props {
 export function CalculatorPanel({ value, onChange, rightExtra, install, onInstallChange, projectName }: Props) {
   const set = <K extends keyof CalcInput>(k: K, v: CalcInput[K]) => onChange({ ...value, [k]: v });
   const num = (s: string) => (s === "" ? 0 : Number(s));
+
+  const bayRef = useRef<SVGSVGElement>(null);
+  const gableRef = useRef<SVGSVGElement>(null);
+  const roofRef = useRef<SVGSVGElement>(null);
 
   const variantsQ = useQuery({
     queryKey: VARIANTS_QUERY_KEY,
@@ -543,9 +550,40 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
       </TabsContent>
 
       <TabsContent value="diagrams" className="space-y-6">
-        <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} projectName={projectName} variantName={selectedVariant?.name ?? null} />
-        <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} projectName={projectName} variantName={selectedVariant?.name ?? null} />
-        <RoofPlanDiagram input={calcInput} result={result} projectName={projectName} variantName={selectedVariant?.name ?? null} />
+        <div className="flex justify-end">
+          <Button
+            variant="default"
+            size="sm"
+            className="gap-1.5"
+            onClick={async () => {
+              const items = [
+                { svg: bayRef.current, title: "Cross-section" },
+                { svg: gableRef.current, title: "Gable elevation" },
+                { svg: roofRef.current, title: "Roof plan" },
+              ].filter((i): i is { svg: SVGSVGElement; title: string } => !!i.svg);
+              if (items.length === 0) {
+                toast.error("Diagrams not ready");
+                return;
+              }
+              try {
+                await downloadCombinedPDF(
+                  items,
+                  `${slugify(projectName ?? "marquee")}-diagrams`,
+                  { projectName, variantName: selectedVariant?.name ?? null },
+                );
+              } catch (e) {
+                console.error(e);
+                toast.error("Download failed");
+              }
+            }}
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            Download all (PDF)
+          </Button>
+        </div>
+        <BayDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} projectName={projectName} variantName={selectedVariant?.name ?? null} svgRef={bayRef} />
+        <GableDiagram input={calcInput} result={result} panelW={panelW} panelH={panelH} projectName={projectName} variantName={selectedVariant?.name ?? null} svgRef={gableRef} />
+        <RoofPlanDiagram input={calcInput} result={result} projectName={projectName} variantName={selectedVariant?.name ?? null} svgRef={roofRef} />
       </TabsContent>
 
       <TabsContent value="labour" className="space-y-6">

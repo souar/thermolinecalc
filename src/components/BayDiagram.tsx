@@ -1,8 +1,10 @@
-import type { ReactElement } from "react";
+import { useRef, type ReactElement, type Ref } from "react";
 import { CalcInput, CalcResult, fmt } from "@/lib/calculator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_STROKE_THICK, CAD_FONT_SM, DimLine, Legend, PartLabel, TickMark, TitleBlock } from "./diagrams/cad";
+import { DiagramDownloadMenu } from "./diagrams/DiagramDownloadMenu";
+import { slugify } from "@/lib/diagramExport";
 
 interface Props {
   input: CalcInput;
@@ -11,6 +13,7 @@ interface Props {
   panelH: number;
   projectName?: string;
   variantName?: string | null;
+  svgRef?: Ref<SVGSVGElement>;
 }
 
 type BayRow = {
@@ -22,7 +25,9 @@ type BayRow = {
   custom?: boolean;
 };
 
-export function BayDiagram({ input, result, panelW, panelH, projectName, variantName }: Props) {
+export function BayDiagram({ input, result, panelW, panelH, projectName, variantName, svgRef }: Props) {
+  const localRef = useRef<SVGSVGElement>(null);
+  const ref = (svgRef as React.RefObject<SVGSVGElement> | undefined) ?? localRef;
   const { width, eaveHeight, length } = input;
   const { ridgeHeight, wallStacks, customWallInfill, apexWidth, customRoofEave, slopeLength } = result;
   const roofPanelsPerSide = result.bays > 0 ? result.roofPanels / 2 / result.bays : 0;
@@ -139,13 +144,14 @@ export function BayDiagram({ input, result, panelW, panelH, projectName, variant
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Single bay (cross-section)
         </CardTitle>
+        <DiagramDownloadMenu getSvg={() => ref.current} filename={`${slugify(projectName ?? "marquee")}-cross-section`} />
       </CardHeader>
       <CardContent className="space-y-6">
-        <CadFrame vbW={vbW} vbH={vbH}>
+        <CadFrame vbW={vbW} vbH={vbH} svgRef={ref}>
           {/* Ground line */}
           <line x1={ox - 1} y1={groundY} x2={ox + width + 1} y2={groundY} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE} />
           {/* Ground hatching */}

@@ -1,7 +1,10 @@
+import { useRef, type Ref } from "react";
 import { CalcInput, CalcResult, fmt } from "@/lib/calculator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_FONT_SM, DimLine, Legend, PartLabel, TickMark, TitleBlock } from "./diagrams/cad";
+import { DiagramDownloadMenu } from "./diagrams/DiagramDownloadMenu";
+import { slugify } from "@/lib/diagramExport";
 
 interface Props {
   input: CalcInput;
@@ -10,9 +13,12 @@ interface Props {
   panelH: number;
   projectName?: string;
   variantName?: string | null;
+  svgRef?: Ref<SVGSVGElement>;
 }
 
-export function GableDiagram({ input, result, panelW, panelH, projectName, variantName }: Props) {
+export function GableDiagram({ input, result, panelW, panelH, projectName, variantName, svgRef }: Props) {
+  const localRef = useRef<SVGSVGElement>(null);
+  const ref = (svgRef as React.RefObject<SVGSVGElement> | undefined) ?? localRef;
   const { width, length } = input;
   const { ridgeHeight, wallStacks, gableWallsPanels, gableTriCount, gableInfillCount, gableTriSlices } = result;
   const stackH = wallStacks * panelH;
@@ -75,13 +81,14 @@ export function GableDiagram({ input, result, panelW, panelH, projectName, varia
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Gable end (elevation)
         </CardTitle>
+        <DiagramDownloadMenu getSvg={() => ref.current} filename={`${slugify(projectName ?? "marquee")}-gable-elevation`} />
       </CardHeader>
       <CardContent className="space-y-6">
-        <CadFrame vbW={vbW} vbH={vbH}>
+        <CadFrame vbW={vbW} vbH={vbH} svgRef={ref}>
           {/* Ground line + hatching */}
           <line x1={ox - 0.5} y1={groundY} x2={ox + width + 0.5} y2={groundY} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE} />
           {Array.from({ length: Math.floor(width + 1) }).map((_, i) => (
