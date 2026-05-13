@@ -81,13 +81,14 @@ export function GableDiagram({ input, result, panelW, panelH, projectName, varia
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Gable end (elevation)
         </CardTitle>
+        <DiagramDownloadMenu getSvg={() => ref.current} filename={`${slugify(projectName ?? "marquee")}-gable-elevation`} />
       </CardHeader>
       <CardContent className="space-y-6">
-        <CadFrame vbW={vbW} vbH={vbH}>
+        <CadFrame vbW={vbW} vbH={vbH} svgRef={ref}>
           {/* Ground line + hatching */}
           <line x1={ox - 0.5} y1={groundY} x2={ox + width + 0.5} y2={groundY} stroke={CAD_COLORS.outline} strokeWidth={CAD_STROKE} />
           {Array.from({ length: Math.floor(width + 1) }).map((_, i) => (
