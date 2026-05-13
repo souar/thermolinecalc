@@ -5,6 +5,8 @@ import { CadFrame, CAD_COLORS, CAD_STROKE, CAD_STROKE_THIN, CAD_FONT_SM, DimLine
 interface Props {
   input: CalcInput;
   result: CalcResult;
+  projectName?: string;
+  variantName?: string | null;
 }
 
 /**
@@ -13,7 +15,7 @@ interface Props {
  * Bands are computed dynamically from `roofPanelsPerSide`, `customRoofEave`
  * and `apexWidth` so the diagram matches the actual lining quantities.
  */
-export function RoofPlanDiagram({ input, result }: Props) {
+export function RoofPlanDiagram({ input, result, projectName, variantName }: Props) {
   const { length, width, baySize, panelH: panelHInput } = input;
   const { bays, slopeLength, apexWidth, roofPanelsPerSide, roofPanelHeight, customRoofEave } = result;
 
