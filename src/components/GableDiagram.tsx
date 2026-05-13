@@ -155,9 +155,7 @@ export function GableDiagram({ input, result, panelW, panelH, projectName, varia
             </g>
           ))}
 
-          {/* Additional strut callout near apex */}
-          <text x={midX + 1.2} y={ridgeY + 0.6} fontSize={CAD_FONT_SM} fill={CAD_COLORS.dim} fontStyle="italic" style={{ fontFamily: "ui-serif, Georgia, serif" }}>additional strut</text>
-          <line x1={midX + 1.1} y1={ridgeY + 0.55} x2={midX + 0.05} y2={ridgeY + 0.2} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+          {/* Additional strut callout removed */}
 
           {/* Rafter flap labels on legs (if enabled) */}
           {input.legRaftersEnabled && [ox, ox + width].map((x, side) => (
