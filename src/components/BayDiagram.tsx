@@ -276,11 +276,11 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             return <g key={`rl${side}`}>{labels}</g>;
           })}
 
-          {/* Apex part label with leader line — only when apex is lined */}
+          {/* Apex part label centred above the apex — only when apex is lined */}
           {input.lineRoof !== false && input.lineApex !== false && apexWidth > 1e-6 && (
             <>
-              <line x1={midX} y1={ridgeY} x2={midX + 1.5} y2={ridgeY - 0.8} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
-              <PartLabel x={midX + 1.6} y={ridgeY - 0.95} label="apex fitting piece" code={`${Math.round(apexWidth * 1000)}mm`} anchor="start" />
+              <line x1={midX} y1={ridgeY} x2={midX} y2={ridgeY - 0.6} stroke={CAD_COLORS.dim} strokeWidth={CAD_STROKE_THIN} />
+              <PartLabel x={midX} y={ridgeY - 1.0} label="apex fitting piece" code={`${Math.round(apexWidth * 1000)}mm`} anchor="middle" />
             </>
           )}
 
