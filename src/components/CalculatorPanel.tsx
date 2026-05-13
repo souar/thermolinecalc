@@ -36,9 +36,10 @@ interface Props {
   rightExtra?: React.ReactNode;
   install?: InstallInput;
   onInstallChange?: (v: InstallInput) => void;
+  projectName?: string;
 }
 
-export function CalculatorPanel({ value, onChange, rightExtra, install, onInstallChange }: Props) {
+export function CalculatorPanel({ value, onChange, rightExtra, install, onInstallChange, projectName }: Props) {
   const set = <K extends keyof CalcInput>(k: K, v: CalcInput[K]) => onChange({ ...value, [k]: v });
   const num = (s: string) => (s === "" ? 0 : Number(s));
 
