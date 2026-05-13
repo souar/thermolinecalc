@@ -9,6 +9,8 @@ interface Props {
   result: CalcResult;
   panelW: number;
   panelH: number;
+  projectName?: string;
+  variantName?: string | null;
 }
 
 type BayRow = {
