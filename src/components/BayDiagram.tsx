@@ -239,25 +239,37 @@ export function BayDiagram({ input, result, panelW, panelH }: Props) {
             </g>
           ))}
 
-          {/* Roof panel labels (centered along each slope segment) — only when roof is lined */}
+          {/* Roof panel labels (parallel to slope, above the rafter) — only when roof is lined */}
           {input.lineRoof !== false && [0, 1].map((side) => {
             const labels: ReactElement[] = [];
             const dir = side === 0 ? 1 : -1;
             const startX = side === 0 ? leftX : rightX;
             const segCount = roofPanelsPerSide;
+            // Perpendicular unit vector pointing "above" the rafter (toward smaller y)
+            const dxr = dir * (width / 2 - apexHalfPlan);
+            const dyr = apexBaseY - eaveY;
+            const lenR = Math.hypot(dxr, dyr) || 1;
+            let nxr = -dyr / lenR;
+            let nyr = dxr / lenR;
+            if (nyr > 0) { nxr = -nxr; nyr = -nyr; }
+            const offset = 1.0;
+            // Rotation so text reads along the slope, never upside-down
+            let slopeAngle = (Math.atan2(dyr, dxr) * 180) / Math.PI;
+            if (slopeAngle > 90) slopeAngle -= 180;
+            if (slopeAngle < -90) slopeAngle += 180;
             let cursorPlan = 0;
             let cursorRise = 0;
             if (customRoofEave) {
               const lx = startX + dir * eaveCutPlan / 2;
               const ly = eaveY - eaveCutRise / 2;
-              labels.push(<PartLabel key={`re${side}`} x={lx + dir * 0.4} y={ly - 0.25} label="roof eave" code={`${fmt(panelW, 0)}×${fmt(customRoofEave.height)}`} />);
+              labels.push(<PartLabel key={`re${side}`} x={lx + nxr * offset} y={ly + nyr * offset} label="roof eave" code={`${fmt(panelW, 0)}×${fmt(customRoofEave.height)}`} rotate={slopeAngle} />);
               cursorPlan += eaveCutPlan;
               cursorRise += eaveCutRise;
             }
             for (let i = 0; i < segCount; i++) {
               const lx = startX + dir * (cursorPlan + segPlan / 2);
               const ly = eaveY - (cursorRise + segRise / 2);
-              labels.push(<PartLabel key={`r${side}-${i}`} x={lx} y={ly - 0.3} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-R-${i + 1}`} />);
+              labels.push(<PartLabel key={`r${side}-${i}`} x={lx + nxr * offset} y={ly + nyr * offset} label={`thermoline ${fmt(panelW, 0)}×${fmt(panelH, 0)}`} code={`MAL-R-${i + 1}`} rotate={slopeAngle} />);
               cursorPlan += segPlan;
               cursorRise += segRise;
             }
