@@ -46,6 +46,10 @@ export function CalculatorPanel({ value, onChange, rightExtra, install, onInstal
   const set = <K extends keyof CalcInput>(k: K, v: CalcInput[K]) => onChange({ ...value, [k]: v });
   const num = (s: string) => (s === "" ? 0 : Number(s));
 
+  const bayRef = useRef<SVGSVGElement>(null);
+  const gableRef = useRef<SVGSVGElement>(null);
+  const roofRef = useRef<SVGSVGElement>(null);
+
   const variantsQ = useQuery({
     queryKey: VARIANTS_QUERY_KEY,
     queryFn: fetchVariantsWithBom,
