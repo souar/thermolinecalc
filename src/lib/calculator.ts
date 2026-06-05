@@ -295,6 +295,9 @@ export function calculate(input: CalcInput): CalcResult {
   const slopePerM = halfW > 0 ? ridgeHeight / halfW : 0;
   const slicesPerHalf = Math.max(1, Math.ceil(halfW / baySize));
   const wpm2 = weightPerM2 || 0;
+  // Weight-only handling cap: a piece may not weigh more than one full panel
+  // of the same material (panelW × panelH × weight/m²). When no weight data
+  // is available, treat the cap as infinite so we never split blindly.
   const maxPieceWeight = wpm2 > 0 ? panelW * panelH * wpm2 : Infinity;
 
   const gableTriSlices: Array<{ base: number; hInner: number; hOuter: number; pieces: GablePiece[] }> = [];
