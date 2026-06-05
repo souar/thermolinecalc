@@ -335,9 +335,10 @@ export function calculate(input: CalcInput): CalcResult {
     if (hOuter > 1e-6) {
       const totalInfillArea = base * hOuter;
       const totalInfillWeight = totalInfillArea * wpm2;
-      const splits = wpm2 > 0 && maxPieceWeight > 0
-        ? Math.max(1, Math.ceil(totalInfillWeight / maxPieceWeight))
-        : 1;
+      const splits = Math.max(
+        1,
+        Math.ceil(totalInfillWeight / maxPieceWeight),
+      );
       const sliceH = hOuter / splits;
       for (let s = 0; s < splits; s++) {
         const m2 = base * sliceH;
